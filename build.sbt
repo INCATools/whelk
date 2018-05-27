@@ -25,6 +25,7 @@ fork in Test := true
 libraryDependencies ++= {
   Seq(
     "net.sourceforge.owlapi"      %  "owlapi-distribution"    % "4.5.2",
+    "org.phenoscape"              %% "scowl"                  % "1.3",
     "org.backuity.clist"          %% "clist-core"             % "3.5.0",
     "org.backuity.clist"          %% "clist-macros"           % "3.5.0" % "provided",
     "com.typesafe.scala-logging"  %% "scala-logging"          % "3.9.0",
