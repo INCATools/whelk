@@ -18,7 +18,7 @@ object Test extends App {
   val R = Role("R")
   val S = Role("S")
 
-  val axioms = Set(
+  val axioms = Set[Axiom](
     ConceptInclusion(A, B),
     ConceptInclusion(B, C),
     ConceptInclusion(D, E),
@@ -30,11 +30,7 @@ object Test extends App {
     ConceptInclusion(H, ExistentialRestriction(S, I)),
     ConceptInclusion(ExistentialRestriction(S, I), H))
 
-  val reasoner1 = Reasoner.empty.copy(
-    todo = Queue.empty.enqueue(axioms),
-    concIncs = axioms,
-    negConjs = Set(Conjunction(C, F)),
-    negExists = Set(ExistentialRestriction(R, E), ExistentialRestriction(S, I)),
+  val reasoner1 = Reasoner.prepare(axioms).copy(
     hier = Map(
       R -> Set(R, S),
       S -> Set(S)),
@@ -42,12 +38,14 @@ object Test extends App {
 
   val reasoner = Reasoner.prepare(Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create("http://purl.obolibrary.org/obo/uberon/ext.owl"))))
 
+  println("Start")
   val start = System.currentTimeMillis
   val done = Reasoner.computeClosure(reasoner)
   val stop = System.currentTimeMillis
   println(s"Reasoned in: ${stop - start} ms")
-  done.subs.foreach(println)
+  //done.subs.foreach(println)
   println("================")
-  done.subs.collect { case (ci @ ConceptInclusion(AtomicConcept(_), AtomicConcept(_))) => ci }.foreach(println)
+  //done.subs.collect { case (ci @ ConceptInclusion(AtomicConcept(_), AtomicConcept(_))) => ci }.foreach(println)
+  println(done.subs.size)
 
 }

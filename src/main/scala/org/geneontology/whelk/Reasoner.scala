@@ -4,21 +4,21 @@ import scala.annotation.tailrec
 import scala.collection.immutable.Queue
 
 final case class Reasoner(
-  todo:                 Queue[QueueExpression], // need to initialize from ont
-  concIncs:             Set[ConceptInclusion], // based on ont
-  concIncsBySuperclass: Map[Concept, List[ConceptInclusion]],
-  inits:                Set[Concept], // closure
-  subs:                 Set[ConceptInclusion], // closure
-  subsBySubclass:       Map[Concept, List[ConceptInclusion]],
-  links:                Set[Link], // closure
-  linksBySubject:       Map[Concept, List[Link]],
-  linksByTarget:        Map[Concept, List[Link]],
-  negConjs:             Set[Conjunction], // based on ont
-  negConjsByOperand:    Map[Concept, List[Conjunction]], //NOT USED
-  negExists:            Set[ExistentialRestriction], // based on ont
-  hier:                 Map[Role, Set[Role]], // based on ont
-  roleComps:            Map[(Role, Role), Set[Role]], // based on ont
-  topOccursNegatively:  Boolean) // based on ont
+  todo:                Queue[QueueExpression], // need to initialize from ont
+  concIncs:            Set[ConceptInclusion], // based on ont
+  concIncsBySubclass:  Map[Concept, List[ConceptInclusion]],
+  inits:               Set[Concept], // closure
+  subs:                Set[ConceptInclusion], // closure
+  subsBySubclass:      Map[Concept, List[ConceptInclusion]],
+  links:               Set[Link], // closure
+  linksBySubject:      Map[Concept, List[Link]],
+  linksByTarget:       Map[Concept, List[Link]],
+  negConjs:            Set[Conjunction], // based on ont
+  negConjsByOperand:   Map[Concept, List[Conjunction]], //NOT USED
+  negExists:           Set[ExistentialRestriction], // based on ont
+  hier:                Map[Role, Set[Role]], // based on ont
+  roleComps:           Map[(Role, Role), Set[Role]], // based on ont
+  topOccursNegatively: Boolean) // based on ont
 
 object Reasoner {
 
@@ -26,12 +26,12 @@ object Reasoner {
 
   def prepare(axioms: Set[Axiom]): Reasoner = {
     val concIncs = axioms.collect { case ci: ConceptInclusion => ci }
-    val concIncsBySuperclass = concIncs.groupBy(_.superclass).mapValues(_.toList)
+    val concIncsBySubclass = concIncs.groupBy(_.subclass).mapValues(_.toList)
     val todo = Queue.empty.enqueue(concIncs)
     val negativeConcepts = concIncs.flatMap(_.subclass.conceptSignature)
     val negConjs = negativeConcepts.collect { case conj: Conjunction => conj }
     val negExists = negativeConcepts.collect { case er: ExistentialRestriction => er }
-    empty.copy(todo = todo, concIncs = concIncs, concIncsBySuperclass = concIncsBySuperclass, negConjs = negConjs, negExists = negExists, topOccursNegatively = negativeConcepts(Top))
+    empty.copy(todo = todo, concIncs = concIncs, concIncsBySubclass = concIncsBySubclass, negConjs = negConjs, negExists = negExists, topOccursNegatively = negativeConcepts(Top))
   }
 
   @tailrec
@@ -63,10 +63,9 @@ object Reasoner {
     if (reasoner.topOccursNegatively) reasoner.copy(todo = reasoner.todo.enqueue(ConceptInclusion(concept, Top)))
     else reasoner
 
-  // get from links indexed by target, map over collection of links to get their subjects
   private def `R⊥`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner =
     if (ci.superclass == Bottom) reasoner.copy(todo = reasoner.todo
-      .enqueue(reasoner.links.collect { case Link(e, r, ci.subclass) => ConceptInclusion(e, Bottom) }))
+      .enqueue(reasoner.linksByTarget.getOrElse(ci.subclass, Nil).map(link => ConceptInclusion(link.subject, Bottom))))
     else reasoner
 
   private def `R-⨅`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner = ci match {
@@ -76,13 +75,13 @@ object Reasoner {
     case _ => reasoner
   }
 
-  // get from subs indexed by subclass; get from negConjs indexed by either operand
   private def `R+⨅`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner = reasoner.copy(todo = reasoner.todo.enqueue(
-    reasoner.subs.collect {
-      case ConceptInclusion(ci.subclass, other) =>
-        reasoner.negConjs.filter { conj =>
-          ((conj.left == ci.superclass) && (conj.right == other)) || ((conj.left == other) && (conj.right == ci.superclass))
-        }.map(ConceptInclusion(ci.subclass, _))
+    reasoner.subsBySubclass.getOrElse(ci.subclass, Nil).map { otherCI =>
+      //TODO maybe index conjunctions by any operand
+      val onLeft = Conjunction(ci.superclass, otherCI.superclass)
+      val onRight = Conjunction(otherCI.superclass, ci.superclass)
+      val fromLeft = if (reasoner.negConjs(onLeft)) List(ConceptInclusion(ci.subclass, onLeft)) else Nil //slow set contains; also conjunction hash
+      if (reasoner.negConjs(onRight)) ConceptInclusion(ci.subclass, onRight) :: fromLeft else fromLeft //slow set contains
     }.flatten))
 
   private def `R-∃`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner = ci match {
@@ -91,18 +90,16 @@ object Reasoner {
     case _ => reasoner
   }
 
-  // get from links indexed by target
   private def `R+∃`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner = reasoner.copy(todo = reasoner.todo.enqueue(
     for {
-      Link(e, r, ci.subclass) <- reasoner.links
+      Link(e, r, _) <- reasoner.linksByTarget.getOrElse(ci.subclass, Nil)
       s <- reasoner.hier.getOrElse(r, Set.empty)
       f = ExistentialRestriction(s, ci.superclass)
       if reasoner.negExists(f)
     } yield ConceptInclusion(e, f)))
 
-  // get from concIncs indexed by superclass
   private def `R⊑`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner = reasoner.copy(todo = reasoner.todo.enqueue(
-    reasoner.concIncs.collect { case ConceptInclusion(ci.superclass, e) => ConceptInclusion(ci.subclass, e) }))
+    reasoner.concIncsBySubclass.getOrElse(ci.superclass, Nil).map(other => ConceptInclusion(ci.subclass, other.superclass))))
 
   private def `R⊥`(link: Link, reasoner: Reasoner): Reasoner = {
     if (reasoner.subs(ConceptInclusion(link.target, Bottom)))
@@ -110,19 +107,17 @@ object Reasoner {
     else reasoner
   }
 
-  // get from subs indexed by subclass
   private def `R+∃`(link: Link, reasoner: Reasoner): Reasoner = reasoner.copy(todo = reasoner.todo.enqueue(
     for {
-      ConceptInclusion(link.target, superclass) <- reasoner.subs
+      ConceptInclusion(_, superclass) <- reasoner.subsBySubclass.getOrElse(link.target, Nil)
       s <- reasoner.hier.getOrElse(link.role, Set.empty)
       f = ExistentialRestriction(s, superclass)
       if reasoner.negExists(f)
     } yield ConceptInclusion(link.subject, f)))
 
-  // get from links indexed by subject
   private def `R∘`(link: Link, reasoner: Reasoner): Reasoner = reasoner.copy(todo = reasoner.todo.enqueue(
     for {
-      Link(link.target, r2, d) <- reasoner.links
+      Link(_, r2, d) <- reasoner.linksBySubject.getOrElse(link.target, Nil)
       s1 <- reasoner.hier.getOrElse(link.role, Set.empty)
       s2 <- reasoner.hier.getOrElse(r2, Set.empty)
       s <- reasoner.roleComps.getOrElse((s1, s2), Set.empty)
