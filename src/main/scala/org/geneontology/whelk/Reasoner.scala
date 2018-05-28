@@ -4,34 +4,40 @@ import scala.annotation.tailrec
 import scala.collection.immutable.Queue
 
 final case class Reasoner(
-  todo:                Queue[QueueExpression], // need to initialize from ont
-  concIncs:            Set[ConceptInclusion], // based on ont
-  concIncsBySubclass:  Map[Concept, List[ConceptInclusion]],
-  inits:               Set[Concept], // closure
-  subs:                Set[ConceptInclusion], // closure
-  subsBySubclass:      Map[Concept, List[ConceptInclusion]],
-  links:               Set[Link], // closure
-  linksBySubject:      Map[Concept, List[Link]],
-  linksByTarget:       Map[Concept, List[Link]],
-  negConjs:            Set[Conjunction], // based on ont
-  negConjsByOperand:   Map[Concept, List[Conjunction]], //NOT USED
-  negExists:           Set[ExistentialRestriction], // based on ont
-  hier:                Map[Role, Set[Role]], // based on ont
-  roleComps:           Map[(Role, Role), Set[Role]], // based on ont
-  topOccursNegatively: Boolean) // based on ont
+  todo:                   Queue[QueueExpression], // need to initialize from ont
+  concIncs:               Set[ConceptInclusion], // based on ont
+  concIncsBySubclass:     Map[Concept, List[ConceptInclusion]],
+  inits:                  Set[Concept], // closure
+  subs:                   Set[ConceptInclusion], // closure
+  //subsBySubclassList:     Map[Concept, List[ConceptInclusion]],
+  subsBySubclass:         Map[Concept, Set[ConceptInclusion]],
+  links:                  Set[Link], // closure
+  linksBySubject:         Map[Concept, List[Link]],
+  linksByTarget:          Map[Concept, List[Link]],
+  negConjs:               Set[Conjunction], // based on ont
+  negConjsByOperand:      Map[Concept, Map[Concept, Conjunction]], // based on ont
+  negConjsByOperandLeft:  Map[Concept, Map[Concept, Conjunction]], // based on ont
+  negConjsByOperandRight: Map[Concept, Map[Concept, Conjunction]], // based on ont
+  negExists:              Set[ExistentialRestriction], // based on ont
+  hier:                   Map[Role, Set[Role]], // based on ont
+  roleComps:              Map[(Role, Role), Set[Role]], // based on ont
+  topOccursNegatively:    Boolean) // based on ont
 
 object Reasoner {
 
-  val empty: Reasoner = Reasoner(Queue.empty, Set.empty, Map.empty, Set.empty, Set.empty, Map.empty, Set.empty, Map.empty, Map.empty, Set.empty, Map.empty, Set.empty, Map.empty, Map.empty, false)
+  val empty: Reasoner = Reasoner(Queue.empty, Set.empty, Map.empty, Set.empty, Set.empty, Map.empty, Set.empty, Map.empty, Map.empty, Set.empty, Map.empty, Map.empty, Map.empty, Set.empty, Map.empty, Map.empty, false)
 
   def prepare(axioms: Set[Axiom]): Reasoner = {
     val concIncs = axioms.collect { case ci: ConceptInclusion => ci }
-    val concIncsBySubclass = concIncs.groupBy(_.subclass).mapValues(_.toList)
+    val concIncsBySubclass = concIncs.groupBy(_.subclass).map { case (concept, cis) => concept -> cis.toList }
     val todo = Queue.empty.enqueue(concIncs)
     val negativeConcepts = concIncs.flatMap(_.subclass.conceptSignature)
     val negConjs = negativeConcepts.collect { case conj: Conjunction => conj }
+    val negConjsByOperand = negConjs.groupBy(_.left).map { case (concept, m) => concept -> m.map(conj => conj.right -> conj).toMap }
+    val negConjsByOperandLeft = negConjs.groupBy(_.left).map { case (concept, m) => concept -> m.map(conj => conj.right -> conj).toMap }
+    val negConjsByOperandRight = negConjs.groupBy(_.right).map { case (concept, m) => concept -> m.map(conj => conj.left -> conj).toMap }
     val negExists = negativeConcepts.collect { case er: ExistentialRestriction => er }
-    empty.copy(todo = todo, concIncs = concIncs, concIncsBySubclass = concIncsBySubclass, negConjs = negConjs, negExists = negExists, topOccursNegatively = negativeConcepts(Top))
+    empty.copy(todo = todo, concIncs = concIncs, concIncsBySubclass = concIncsBySubclass, negConjs = negConjs, negConjsByOperand = negConjsByOperand, negExists = negExists, topOccursNegatively = negativeConcepts(Top))
   }
 
   @tailrec
@@ -45,7 +51,8 @@ object Reasoner {
       `R⊤`(concept, R0(concept, reasoner.copy(inits = reasoner.inits + concept)))
     case ci @ ConceptInclusion(subclass, superclass) => if (reasoner.subs(ci)) reasoner else {
       val subs = reasoner.subs + ci
-      val subsBySubclass = reasoner.subsBySubclass + (ci.subclass -> (ci :: reasoner.subsBySubclass.getOrElse(ci.subclass, Nil)))
+      //val subsBySubclass = reasoner.subsBySubclass + (ci.subclass -> (ci :: reasoner.subsBySubclass.getOrElse(ci.subclass, Nil)))
+      val subsBySubclass = reasoner.subsBySubclass + (ci.subclass -> (reasoner.subsBySubclass.getOrElse(ci.subclass, Set.empty) + ci))
       `R⊑`(ci, `R+∃`(ci, `R-∃`(ci, `R+⨅`(ci, `R-⨅`(ci, `R⊥`(ci, reasoner.copy(subs = subs, subsBySubclass = subsBySubclass)))))))
     }
     case link @ Link(subclass, role, superclass) => if (reasoner.links(link)) reasoner else {
@@ -75,14 +82,37 @@ object Reasoner {
     case _ => reasoner
   }
 
-  private def `R+⨅`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner = reasoner.copy(todo = reasoner.todo.enqueue(
-    reasoner.subsBySubclass.getOrElse(ci.subclass, Nil).map { otherCI =>
-      //TODO maybe index conjunctions by any operand
-      val onLeft = Conjunction(ci.superclass, otherCI.superclass)
-      val onRight = Conjunction(otherCI.superclass, ci.superclass)
-      val fromLeft = if (reasoner.negConjs(onLeft)) List(ConceptInclusion(ci.subclass, onLeft)) else Nil //slow set contains; also conjunction hash
-      if (reasoner.negConjs(onRight)) ConceptInclusion(ci.subclass, onRight) :: fromLeft else fromLeft //slow set contains
-    }.flatten))
+  private def `R+⨅`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner = {
+    var todos = List.empty[ConceptInclusion]
+    val subs = reasoner.subsBySubclass(ci.subclass)
+    reasoner.negConjsByOperandLeft.getOrElse(ci.superclass, Map.empty).foreach {
+      case (right, conj) =>
+        if (subs(ConceptInclusion(ci.subclass, right))) {
+          todos = ConceptInclusion(ci.subclass, conj) :: todos
+        }
+    }
+    reasoner.negConjsByOperandRight.getOrElse(ci.superclass, Map.empty).foreach {
+      case (left, conj) =>
+        if (subs(ConceptInclusion(ci.subclass, left))) {
+          todos = ConceptInclusion(ci.subclass, conj) :: todos
+        }
+    }
+    reasoner.copy(todo = reasoner.todo.enqueue(todos))
+  }
+
+  // Different join order - much slower on Uberon
+  private def `R+⨅subsFirst`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner = {
+    var todos = List.empty[ConceptInclusion]
+    reasoner.subsBySubclass.getOrElse(ci.subclass, Nil).foreach { otherCI =>
+      reasoner.negConjsByOperand.getOrElse(ci.superclass, Map.empty).get(otherCI.superclass).foreach { conj =>
+        todos = ConceptInclusion(ci.subclass, conj) :: todos
+      }
+      reasoner.negConjsByOperand.getOrElse(otherCI.superclass, Map.empty).get(ci.superclass).foreach { conj =>
+        todos = ConceptInclusion(ci.subclass, conj) :: todos
+      }
+    }
+    reasoner.copy(todo = reasoner.todo.enqueue(todos))
+  }
 
   private def `R-∃`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner = ci match {
     case ConceptInclusion(c, ExistentialRestriction(role, filler)) => reasoner.copy(todo = reasoner.todo
