@@ -24,6 +24,7 @@ fork in Test := true
 
 libraryDependencies ++= {
   Seq(
+    "org.scalaz"                  %% "scalaz-core"            % "7.2.14",
     "net.sourceforge.owlapi"      %  "owlapi-distribution"    % "4.5.2",
     "org.phenoscape"              %% "scowl"                  % "1.3",
     "org.backuity.clist"          %% "clist-core"             % "3.5.0",

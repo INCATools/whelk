@@ -3,6 +3,7 @@ package org.geneontology.whelk
 import scala.collection.immutable.Queue
 import org.semanticweb.owlapi.apibinding.OWLManager
 import org.semanticweb.owlapi.model.IRI
+import java.io.File
 
 object Test extends App {
 
@@ -36,8 +37,8 @@ object Test extends App {
       S -> Set(S)),
     roleComps = Map((S, S) -> Set(S)))
 
-  val reasoner = Reasoner.prepare(Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create("http://purl.obolibrary.org/obo/uberon/ext.owl"))))
-
+  //val reasoner = Reasoner.prepare(Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create("http://purl.obolibrary.org/obo/uberon/ext.owl"))))
+  val reasoner = Reasoner.prepare(Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File("../arachne/cli/src/test/resources/org/geneontology/rules/go-plus-merged.owl")))))
   println("Start")
   val start = System.currentTimeMillis
   val done = Reasoner.computeClosure(reasoner)
