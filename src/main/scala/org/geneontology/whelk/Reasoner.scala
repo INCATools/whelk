@@ -83,10 +83,15 @@ object Reasoner {
     if (reasoner.topOccursNegatively) reasoner.copy(todo = reasoner.todo.enqueue(ConceptInclusion(concept, Top)))
     else reasoner
 
-  private def `R⊥`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner =
-    if (ci.superclass == Bottom) reasoner.copy(todo = reasoner.todo
-      .enqueue(reasoner.linksByTarget.getOrElse(ci.subclass, Nil).map(link => ConceptInclusion(link.subject, Bottom))))
-    else reasoner
+  private def `R⊥`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner = {
+    var todo = reasoner.todo
+    if (ci.superclass == Bottom) {
+      reasoner.linksByTarget.getOrElse(ci.subclass, Nil).foreach { link =>
+        todo = todo.enqueue(ConceptInclusion(link.subject, Bottom))
+      }
+      reasoner.copy(todo = todo)
+    } else reasoner
+  }
 
   private def `R-⨅`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner = ci match {
     case ConceptInclusion(sub, Conjunction(left, right)) => reasoner.copy(todo = reasoner.todo
@@ -96,35 +101,35 @@ object Reasoner {
   }
 
   private def `R+⨅`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner = {
-    var todos = List.empty[ConceptInclusion]
+    var todo = reasoner.todo
     val subs = reasoner.subsBySubclass(ci.subclass)
     reasoner.negConjsByOperandLeft.getOrElse(ci.superclass, Map.empty).foreach {
       case (right, conj) =>
         if (subs(ConceptInclusion(ci.subclass, right))) {
-          todos = ConceptInclusion(ci.subclass, conj) :: todos
+          todo = todo.enqueue(ConceptInclusion(ci.subclass, conj))
         }
     }
     reasoner.negConjsByOperandRight.getOrElse(ci.superclass, Map.empty).foreach {
       case (left, conj) =>
         if (subs(ConceptInclusion(ci.subclass, left))) {
-          todos = ConceptInclusion(ci.subclass, conj) :: todos
+          todo = todo.enqueue(ConceptInclusion(ci.subclass, conj))
         }
     }
-    reasoner.copy(todo = reasoner.todo.enqueue(todos))
+    reasoner.copy(todo = todo)
   }
 
   // Different join order - much slower on Uberon
   private def `R+⨅subsFirst`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner = {
-    var todos = List.empty[ConceptInclusion]
+    var todo = reasoner.todo
     reasoner.subsBySubclass.getOrElse(ci.subclass, Set.empty).foreach { otherCI =>
       reasoner.negConjsByOperand.getOrElse(ci.superclass, Map.empty).get(otherCI.superclass).foreach { conj =>
-        todos = ConceptInclusion(ci.subclass, conj) :: todos
+        todo = todo.enqueue(ConceptInclusion(ci.subclass, conj))
       }
       reasoner.negConjsByOperand.getOrElse(otherCI.superclass, Map.empty).get(ci.superclass).foreach { conj =>
-        todos = ConceptInclusion(ci.subclass, conj) :: todos
+        todo = todo.enqueue(ConceptInclusion(ci.subclass, conj))
       }
     }
-    reasoner.copy(todo = reasoner.todo.enqueue(todos))
+    reasoner.copy(todo = todo)
   }
 
   private def `R-∃`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner = ci match {
@@ -133,16 +138,24 @@ object Reasoner {
     case _ => reasoner
   }
 
-  private def `R+∃`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner = reasoner.copy(todo = reasoner.todo.enqueue(
+  private def `R+∃`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner = {
+    var todo = reasoner.todo
     for {
       Link(e, r, _) <- reasoner.linksByTarget.getOrElse(ci.subclass, Nil)
       s <- reasoner.hier.getOrElse(r, Set.empty)
       ers <- reasoner.negExistsMap.get(s)
       f <- ers.get(ci.superclass)
-    } yield ConceptInclusion(e, f)))
+    } todo = todo.enqueue(ConceptInclusion(e, f))
+    reasoner.copy(todo = todo)
+  }
 
-  private def `R⊑`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner = reasoner.copy(todo = reasoner.todo.enqueue(
-    reasoner.concIncsBySubclass.getOrElse(ci.superclass, Nil).map(other => ConceptInclusion(ci.subclass, other.superclass))))
+  private def `R⊑`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner = {
+    var todo = reasoner.todo
+    reasoner.concIncsBySubclass.getOrElse(ci.superclass, Nil).foreach { other =>
+      todo = todo.enqueue(ConceptInclusion(ci.subclass, other.superclass))
+    }
+    reasoner.copy(todo = todo)
+  }
 
   private def `R⊥`(link: Link, reasoner: Reasoner): Reasoner = {
     if (reasoner.subs(ConceptInclusion(link.target, Bottom)))
@@ -153,33 +166,37 @@ object Reasoner {
   private def `R+∃`(link: Link, reasoner: Reasoner): Reasoner = {
     // link: E R C
     // props[R, C, F]; F= RsomeD
-    var todos = List.empty[QueueExpression]
+    var todo = reasoner.todo
     for {
       roleToER <- reasoner.propagations.get(link.target).toSeq
       s <- reasoner.hier.getOrElse(link.role, Set.empty)
       fs <- roleToER.get(s)
       f <- fs
-    } todos = ConceptInclusion(link.subject, f) :: todos
-    reasoner.copy(todo = reasoner.todo.enqueue(todos))
+    } todo = todo.enqueue(ConceptInclusion(link.subject, f))
+    reasoner.copy(todo = todo)
   }
 
   private def `R+∃old`(link: Link, reasoner: Reasoner): Reasoner = {
-    reasoner.copy(todo = reasoner.todo.enqueue(
-      for {
-        ConceptInclusion(_, d) <- reasoner.subsBySubclass.getOrElse(link.target, Set.empty)
-        s <- reasoner.hier.getOrElse(link.role, Set.empty)
-        ers <- reasoner.negExistsMap.get(s)
-        f <- ers.get(d)
-      } yield ConceptInclusion(link.subject, f)))
+    var todo = reasoner.todo
+    for {
+      ConceptInclusion(_, d) <- reasoner.subsBySubclass.getOrElse(link.target, Set.empty)
+      s <- reasoner.hier.getOrElse(link.role, Set.empty)
+      ers <- reasoner.negExistsMap.get(s)
+      f <- ers.get(d)
+    } todo = todo.enqueue(ConceptInclusion(link.subject, f))
+    reasoner.copy(todo = todo)
   }
 
-  private def `R∘`(link: Link, reasoner: Reasoner): Reasoner = reasoner.copy(todo = reasoner.todo.enqueue(
+  private def `R∘`(link: Link, reasoner: Reasoner): Reasoner = {
+    var todo = reasoner.todo
     for {
       Link(_, r2, d) <- reasoner.linksBySubject.getOrElse(link.target, Nil)
       s1 <- reasoner.hier.getOrElse(link.role, Set.empty)
       s2 <- reasoner.hier.getOrElse(r2, Set.empty)
       s <- reasoner.roleComps.getOrElse((s1, s2), Set.empty)
-    } yield Link(link.subject, s, d)))
+    } todo = todo.enqueue(Link(link.subject, s, d))
+    reasoner.copy(todo = todo)
+  }
 
   private def `R⤳`(link: Link, reasoner: Reasoner): Reasoner = reasoner.copy(todo = reasoner.todo.enqueue(link.target))
 
