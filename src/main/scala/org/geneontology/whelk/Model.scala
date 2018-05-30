@@ -114,3 +114,4 @@ final case class Link(subject: Concept, role: Role, target: Concept) extends Que
 
 }
 
+final case class `Sub+`(ci: ConceptInclusion) extends QueueExpression

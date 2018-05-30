@@ -72,6 +72,14 @@ object Reasoner {
       //`R⊑`(ci, `R+∃`(ci, `R-∃`(ci, `R+⨅`(ci, `R-⨅`(ci, `R⊥`(ci, reasoner.copy(subs = subs, subsBySubclass = subsBySubclass, propagations = propagations)))))))
       `R⊑`(ci, `R+∃old`(ci, `R-∃`(ci, `R+⨅`(ci, `R-⨅`(ci, `R⊥`(ci, reasoner.copy(subs = subs, subsBySubclass = subsBySubclass)))))))
     }
+    case `Sub+`(ci @ ConceptInclusion(subclass, superclass)) => if (reasoner.subs(ci)) reasoner else {
+      val subs = reasoner.subs + ci
+      val subsBySubclass = reasoner.subsBySubclass + (ci.subclass -> (reasoner.subsBySubclass.getOrElse(ci.subclass, Set.empty) + ci.superclass))
+      import scalaz.syntax.semigroup._
+      val propagations: Map[Concept, Map[Role, Set[ExistentialRestriction]]] = reasoner.propagations |+| Map(ci.subclass -> reasoner.negExistsMapByConcept.getOrElse(ci.superclass, Map.empty).map { case (role, er) => role -> Set(er) })
+      //`R⊑`(ci, `R+∃`(ci, `R-∃`(ci, `R+⨅`(ci, `R-⨅`(ci, `R⊥`(ci, reasoner.copy(subs = subs, subsBySubclass = subsBySubclass, propagations = propagations)))))))
+      `R⊑`(ci, `R+∃old`(ci, `R+⨅`(ci, `R⊥`(ci, reasoner.copy(subs = subs, subsBySubclass = subsBySubclass)))))
+    }
     case link @ Link(subclass, role, superclass) => if (reasoner.links(link)) reasoner else {
       val links = reasoner.links + link
       val linksBySubject = reasoner.linksBySubject + (link.subject -> (link :: reasoner.linksBySubject.getOrElse(link.subject, Nil)))
@@ -111,13 +119,13 @@ object Reasoner {
     reasoner.negConjsByOperandLeft.getOrElse(ci.superclass, Map.empty).foreach {
       case (right, conj) =>
         if (superclasses(right)) {
-          todo = todo.enqueue(ConceptInclusion(ci.subclass, conj))
+          todo = todo.enqueue(`Sub+`(ConceptInclusion(ci.subclass, conj)))
         }
     }
     reasoner.negConjsByOperandRight.getOrElse(ci.superclass, Map.empty).foreach {
       case (left, conj) =>
         if (superclasses(left)) {
-          todo = todo.enqueue(ConceptInclusion(ci.subclass, conj))
+          todo = todo.enqueue(`Sub+`(ConceptInclusion(ci.subclass, conj)))
         }
     }
     reasoner.copy(todo = todo)
@@ -128,10 +136,10 @@ object Reasoner {
     var todo = reasoner.todo
     reasoner.subsBySubclass.getOrElse(ci.subclass, Set.empty).foreach { superclass =>
       reasoner.negConjsByOperand.getOrElse(ci.superclass, Map.empty).get(superclass).foreach { conj =>
-        todo = todo.enqueue(ConceptInclusion(ci.subclass, conj))
+        todo = todo.enqueue(`Sub+`(ConceptInclusion(ci.subclass, conj)))
       }
       reasoner.negConjsByOperand.getOrElse(superclass, Map.empty).get(ci.superclass).foreach { conj =>
-        todo = todo.enqueue(ConceptInclusion(ci.subclass, conj))
+        todo = todo.enqueue(`Sub+`(ConceptInclusion(ci.subclass, conj)))
       }
     }
     reasoner.copy(todo = todo)
@@ -150,7 +158,7 @@ object Reasoner {
       s <- reasoner.hier.getOrElse(r, Set.empty)
       ers <- reasoner.negExistsMap.get(s)
       f <- ers.get(ci.superclass)
-    } todo = todo.enqueue(ConceptInclusion(e, f))
+    } todo = todo.enqueue(`Sub+`(ConceptInclusion(e, f)))
     reasoner.copy(todo = todo)
   }
 
@@ -177,7 +185,7 @@ object Reasoner {
       s <- reasoner.hier.getOrElse(link.role, Set.empty)
       fs <- roleToER.get(s)
       f <- fs
-    } todo = todo.enqueue(ConceptInclusion(link.subject, f))
+    } todo = todo.enqueue(`Sub+`(ConceptInclusion(link.subject, f)))
     reasoner.copy(todo = todo)
   }
 
@@ -188,7 +196,7 @@ object Reasoner {
       s <- reasoner.hier.getOrElse(link.role, Set.empty)
       ers <- reasoner.negExistsMap.get(s)
       f <- ers.get(d)
-    } todo = todo.enqueue(ConceptInclusion(link.subject, f))
+    } todo = todo.enqueue(`Sub+`(ConceptInclusion(link.subject, f)))
     reasoner.copy(todo = todo)
   }
 
