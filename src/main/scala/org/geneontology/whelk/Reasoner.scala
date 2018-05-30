@@ -12,7 +12,7 @@ final case class Reasoner(
   concIncsBySubclass:     Map[Concept, List[ConceptInclusion]],
   inits:                  Set[Concept], // closure
   subs:                   Set[ConceptInclusion], // closure
-  subsBySubclass:         Map[Concept, Set[ConceptInclusion]],
+  subsBySubclass:         Map[Concept, Set[Concept]],
   links:                  Set[Link], // closure
   linksBySubject:         Map[Concept, List[Link]],
   linksByTarget:          Map[Concept, List[Link]],
@@ -62,7 +62,7 @@ object Reasoner {
       `R⊤`(concept, R0(concept, reasoner.copy(inits = reasoner.inits + concept)))
     case ci @ ConceptInclusion(subclass, superclass) => if (reasoner.subs(ci)) reasoner else {
       val subs = reasoner.subs + ci
-      val subsBySubclass = reasoner.subsBySubclass + (ci.subclass -> (reasoner.subsBySubclass.getOrElse(ci.subclass, Set.empty) + ci))
+      val subsBySubclass = reasoner.subsBySubclass + (ci.subclass -> (reasoner.subsBySubclass.getOrElse(ci.subclass, Set.empty) + ci.superclass))
       //import scalaz.syntax.semigroup._
       //val propagations: Map[Concept, Map[Role, Set[ExistentialRestriction]]] = reasoner.propagations |+| Map(ci.subclass -> reasoner.negExistsMapByConcept.getOrElse(ci.superclass, Map.empty).map { case (role, er) => role -> Set(er) })
       //`R⊑`(ci, `R+∃`(ci, `R-∃`(ci, `R+⨅`(ci, `R-⨅`(ci, `R⊥`(ci, reasoner.copy(subs = subs, subsBySubclass = subsBySubclass, propagations = propagations)))))))
@@ -102,16 +102,16 @@ object Reasoner {
 
   private def `R+⨅`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner = {
     var todo = reasoner.todo
-    val subs = reasoner.subsBySubclass(ci.subclass)
+    val superclasses = reasoner.subsBySubclass(ci.subclass)
     reasoner.negConjsByOperandLeft.getOrElse(ci.superclass, Map.empty).foreach {
       case (right, conj) =>
-        if (subs(ConceptInclusion(ci.subclass, right))) {
+        if (superclasses(right)) {
           todo = todo.enqueue(ConceptInclusion(ci.subclass, conj))
         }
     }
     reasoner.negConjsByOperandRight.getOrElse(ci.superclass, Map.empty).foreach {
       case (left, conj) =>
-        if (subs(ConceptInclusion(ci.subclass, left))) {
+        if (superclasses(left)) {
           todo = todo.enqueue(ConceptInclusion(ci.subclass, conj))
         }
     }
@@ -121,11 +121,11 @@ object Reasoner {
   // Different join order - much slower on Uberon
   private def `R+⨅subsFirst`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner = {
     var todo = reasoner.todo
-    reasoner.subsBySubclass.getOrElse(ci.subclass, Set.empty).foreach { otherCI =>
-      reasoner.negConjsByOperand.getOrElse(ci.superclass, Map.empty).get(otherCI.superclass).foreach { conj =>
+    reasoner.subsBySubclass.getOrElse(ci.subclass, Set.empty).foreach { superclass =>
+      reasoner.negConjsByOperand.getOrElse(ci.superclass, Map.empty).get(superclass).foreach { conj =>
         todo = todo.enqueue(ConceptInclusion(ci.subclass, conj))
       }
-      reasoner.negConjsByOperand.getOrElse(otherCI.superclass, Map.empty).get(ci.superclass).foreach { conj =>
+      reasoner.negConjsByOperand.getOrElse(superclass, Map.empty).get(ci.superclass).foreach { conj =>
         todo = todo.enqueue(ConceptInclusion(ci.subclass, conj))
       }
     }
@@ -179,7 +179,7 @@ object Reasoner {
   private def `R+∃old`(link: Link, reasoner: Reasoner): Reasoner = {
     var todo = reasoner.todo
     for {
-      ConceptInclusion(_, d) <- reasoner.subsBySubclass.getOrElse(link.target, Set.empty)
+      d <- reasoner.subsBySubclass.getOrElse(link.target, Set.empty)
       s <- reasoner.hier.getOrElse(link.role, Set.empty)
       ers <- reasoner.negExistsMap.get(s)
       f <- ers.get(d)

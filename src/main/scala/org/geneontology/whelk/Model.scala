@@ -54,7 +54,11 @@ final case class Individual(id: String)
 
 sealed trait Axiom
 
-final case class ConceptInclusion(subclass: Concept, superclass: Concept) extends Axiom with QueueExpression
+final case class ConceptInclusion(subclass: Concept, superclass: Concept) extends Axiom with QueueExpression {
+
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
+
+}
 
 final case class RoleInclusion(subproperty: Role, superproperty: Role) extends Axiom
 

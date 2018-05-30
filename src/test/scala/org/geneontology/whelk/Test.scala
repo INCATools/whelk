@@ -37,8 +37,10 @@ object Test extends App {
       S -> Set(S)),
     roleComps = Map((S, S) -> Set(S)))
 
-  //val reasoner = Reasoner.prepare(Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create("http://purl.obolibrary.org/obo/uberon/ext.owl"))))
-  val reasoner = Reasoner.prepare(Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File("../arachne/cli/src/test/resources/org/geneontology/rules/go-plus-merged.owl")))))
+  //val reasoner = Reasoner.prepare(Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create("http://purl.obolibrary.org/obo/pato.owl"))))
+  val uberonAxioms = Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File("../../Source/obo-asserted/uberon.owl"))))
+  val goAxioms = Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File("../../Source/obo-asserted/go.owl"))))
+  val reasoner = Reasoner.prepare(goAxioms ++ uberonAxioms)
   println("Start")
   val start = System.currentTimeMillis
   val done = Reasoner.computeClosure(reasoner)
@@ -47,6 +49,8 @@ object Test extends App {
   //done.subs.foreach(println)
   println("================")
   //done.subs.collect { case (ci @ ConceptInclusion(AtomicConcept(_), AtomicConcept(_))) => ci }.foreach(println)
+  println(reasoner.concIncs.size)
+  println(done.subs.size - reasoner.concIncs.size)
   println(done.subs.size)
 
 }
