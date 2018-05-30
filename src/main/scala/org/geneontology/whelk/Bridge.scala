@@ -33,6 +33,8 @@ object Bridge {
       Set(RoleInclusion(Role(subproperty.toString), Role(superproperty.toString)))
     case SubObjectPropertyChainOf(_, ObjectProperty(first) :: ObjectProperty(second) :: Nil, ObjectProperty(superproperty)) => //FIXME handle >2
       Set(RoleComposition(Role(first.toString), Role(second.toString), Role(superproperty.toString)))
+    case TransitiveObjectProperty(_, ObjectProperty(property)) =>
+      Set(RoleComposition(Role(property.toString), Role(property.toString), Role(property.toString)))
     case other =>
       //println(s"Not supported: $other")
       Set.empty
