@@ -29,6 +29,10 @@ object Bridge {
         case (Some(left), Some(right)) => Set(ConceptInclusion(Conjunction(left, right), Bottom))
         case _                         => Set.empty
       }
+    case SubObjectPropertyOf(_, ObjectProperty(subproperty), ObjectProperty(superproperty)) =>
+      Set(RoleInclusion(Role(subproperty.toString), Role(superproperty.toString)))
+    case SubObjectPropertyChainOf(_, ObjectProperty(first) :: ObjectProperty(second) :: Nil, ObjectProperty(superproperty)) => //FIXME handle >2
+      Set(RoleComposition(Role(first.toString), Role(second.toString), Role(superproperty.toString)))
     case other =>
       //println(s"Not supported: $other")
       Set.empty

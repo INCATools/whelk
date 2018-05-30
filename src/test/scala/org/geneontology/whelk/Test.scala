@@ -29,12 +29,10 @@ object Test extends App {
     ConceptInclusion(Conjunction(C, F), G),
     ConceptInclusion(D, ExistentialRestriction(S, H)),
     ConceptInclusion(H, ExistentialRestriction(S, I)),
-    ConceptInclusion(ExistentialRestriction(S, I), H))
+    ConceptInclusion(ExistentialRestriction(S, I), H),
+    RoleInclusion(R, S))
 
   val reasoner1 = Reasoner.prepare(axioms).copy(
-    hier = Map(
-      R -> Set(R, S),
-      S -> Set(S)),
     roleComps = Map((S, S) -> Set(S)))
 
   //val reasoner = Reasoner.prepare(Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create("http://purl.obolibrary.org/obo/pato.owl"))))

@@ -36,6 +36,10 @@ object Reasoner {
     val concIncs = axioms.collect { case ci: ConceptInclusion => ci }
     val concIncsBySubclass = concIncs.groupBy(_.subclass).map { case (concept, cis) => concept -> cis.toList }
     val todo = Queue.empty.enqueue(concIncs)
+    val allRoles = axioms.flatMap(_.signature).collect { case role: Role => role }
+    val allRoleInclusions = axioms.collect { case ri: RoleInclusion => ri }
+    import scalaz.syntax.semigroup._
+    val hier = saturateRoles(allRoleInclusions) |+| allRoles.map(r => r -> Set(r)).toMap
     val negativeConcepts = concIncs.flatMap(_.subclass.conceptSignature)
     val negConjs = negativeConcepts.collect { case conj: Conjunction => conj }
     val negConjsByOperand = negConjs.groupBy(_.left).map { case (concept, m) => concept -> m.map(conj => conj.right -> conj).toMap }
@@ -48,7 +52,7 @@ object Reasoner {
     val negExistsMapByConcept = negativeConcepts.collect { case er: ExistentialRestriction => er }.groupBy(_.concept).map {
       case (concept, ers) => concept -> ers.map(er => er.role -> er).toMap
     }
-    empty.copy(todo = todo, concIncs = concIncs, concIncsBySubclass = concIncsBySubclass, negConjs = negConjs, negConjsByOperand = negConjsByOperand, negExists = negExists, negExistsMap = negExistsMap, negExistsMapByConcept = negExistsMapByConcept, topOccursNegatively = negativeConcepts(Top))
+    empty.copy(todo = todo, concIncs = concIncs, concIncsBySubclass = concIncsBySubclass, hier = hier, negConjs = negConjs, negConjsByOperand = negConjsByOperand, negExists = negExists, negExistsMap = negExistsMap, negExistsMapByConcept = negExistsMapByConcept, topOccursNegatively = negativeConcepts(Top))
   }
 
   @tailrec
@@ -63,16 +67,17 @@ object Reasoner {
     case ci @ ConceptInclusion(subclass, superclass) => if (reasoner.subs(ci)) reasoner else {
       val subs = reasoner.subs + ci
       val subsBySubclass = reasoner.subsBySubclass + (ci.subclass -> (reasoner.subsBySubclass.getOrElse(ci.subclass, Set.empty) + ci.superclass))
-      //import scalaz.syntax.semigroup._
-      //val propagations: Map[Concept, Map[Role, Set[ExistentialRestriction]]] = reasoner.propagations |+| Map(ci.subclass -> reasoner.negExistsMapByConcept.getOrElse(ci.superclass, Map.empty).map { case (role, er) => role -> Set(er) })
+      import scalaz.syntax.semigroup._
+      val propagations: Map[Concept, Map[Role, Set[ExistentialRestriction]]] = reasoner.propagations |+| Map(ci.subclass -> reasoner.negExistsMapByConcept.getOrElse(ci.superclass, Map.empty).map { case (role, er) => role -> Set(er) })
       //`R⊑`(ci, `R+∃`(ci, `R-∃`(ci, `R+⨅`(ci, `R-⨅`(ci, `R⊥`(ci, reasoner.copy(subs = subs, subsBySubclass = subsBySubclass, propagations = propagations)))))))
-      `R⊑`(ci, `R+∃`(ci, `R-∃`(ci, `R+⨅`(ci, `R-⨅`(ci, `R⊥`(ci, reasoner.copy(subs = subs, subsBySubclass = subsBySubclass)))))))
+      `R⊑`(ci, `R+∃old`(ci, `R-∃`(ci, `R+⨅`(ci, `R-⨅`(ci, `R⊥`(ci, reasoner.copy(subs = subs, subsBySubclass = subsBySubclass)))))))
     }
     case link @ Link(subclass, role, superclass) => if (reasoner.links(link)) reasoner else {
       val links = reasoner.links + link
       val linksBySubject = reasoner.linksBySubject + (link.subject -> (link :: reasoner.linksBySubject.getOrElse(link.subject, Nil)))
       val linksByTarget = reasoner.linksByTarget + (link.target -> (link :: reasoner.linksByTarget.getOrElse(link.target, Nil)))
-      `R⤳`(link, `R∘`(link, `R+∃old`(link, `R⊥`(link, reasoner.copy(links = links, linksBySubject = linksBySubject, linksByTarget = linksByTarget)))))
+      `R⤳`(link, `R∘`(link, `R+∃`(link, `R⊥`(link, reasoner.copy(links = links, linksBySubject = linksBySubject, linksByTarget = linksByTarget)))))
+      //`R⤳`(link, `R∘`(link, `R+∃old`(link, `R⊥`(link, reasoner.copy(links = links, linksBySubject = linksBySubject, linksByTarget = linksByTarget)))))
     }
   }
 
@@ -138,7 +143,7 @@ object Reasoner {
     case _ => reasoner
   }
 
-  private def `R+∃`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner = {
+  private def `R+∃old`(ci: ConceptInclusion, reasoner: Reasoner): Reasoner = { //*
     var todo = reasoner.todo
     for {
       Link(e, r, _) <- reasoner.linksByTarget.getOrElse(ci.subclass, Nil)
@@ -187,7 +192,7 @@ object Reasoner {
     reasoner.copy(todo = todo)
   }
 
-  private def `R∘`(link: Link, reasoner: Reasoner): Reasoner = {
+  private def `R∘`(link: Link, reasoner: Reasoner): Reasoner = { //*
     var todo = reasoner.todo
     for {
       Link(_, r2, d) <- reasoner.linksBySubject.getOrElse(link.target, Nil)
@@ -199,5 +204,14 @@ object Reasoner {
   }
 
   private def `R⤳`(link: Link, reasoner: Reasoner): Reasoner = reasoner.copy(todo = reasoner.todo.enqueue(link.target))
+
+  private def saturateRoles(roleInclusions: Set[RoleInclusion]): Map[Role, Set[Role]] = { //FIXME can do this better
+    val subToSuper = roleInclusions.groupBy(_.subproperty).map { case (sub, ri) => sub -> ri.map(_.superproperty) }
+    def allSupers(role: Role): Set[Role] = for {
+      superProp <- subToSuper.getOrElse(role, Set.empty)
+      superSuperProp <- allSupers(superProp) + superProp
+    } yield superSuperProp
+    subToSuper.keys.map(role => role -> allSupers(role)).toMap
+  }
 
 }
