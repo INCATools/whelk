@@ -26,11 +26,12 @@ final case class Reasoner(
   propagations:           Map[Concept, Map[Role, Set[ExistentialRestriction]]],
   hier:                   Map[Role, Set[Role]], // based on ont
   roleComps:              Map[(Role, Role), Set[Role]], // based on ont
+  hierComps:              Map[Role, Map[Role, Set[Role]]],
   topOccursNegatively:    Boolean) // based on ont
 
 object Reasoner {
 
-  val empty: Reasoner = Reasoner(Queue.empty, Set.empty, Map.empty, Set.empty, Set.empty, Map.empty, Set.empty, Map.empty, Map.empty, Set.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Set.empty, Map.empty, Map.empty, Map.empty, false)
+  val empty: Reasoner = Reasoner(Queue.empty, Set.empty, Map.empty, Set.empty, Set.empty, Map.empty, Set.empty, Map.empty, Map.empty, Set.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Set.empty, Map.empty, Map.empty, Map.empty, Map.empty, false)
 
   def prepare(axioms: Set[Axiom]): Reasoner = {
     val concIncs = axioms.collect { case ci: ConceptInclusion => ci }
@@ -40,6 +41,30 @@ object Reasoner {
     val allRoleInclusions = axioms.collect { case ri: RoleInclusion => ri }
     import scalaz.syntax.semigroup._
     val hier = saturateRoles(allRoleInclusions) |+| allRoles.map(r => r -> Set(r)).toMap
+    val roleComps = axioms.collect { case rc: RoleComposition => rc }.groupBy(rc => (rc.first, rc.second)).map {
+      case (key, ris) =>
+        key -> ris.map(_.superproperty)
+    }
+    val hierCompsTuples = (for {
+      (r1, s1s) <- hier
+      s1 <- s1s
+      (r2, s2s) <- hier
+      s2 <- s2s
+      s <- roleComps.getOrElse((s1, s2), Set.empty)
+    } yield (r1, r2, s)).toSet
+    val hierCompsRemove = for {
+      (r1, r2, s) <- hierCompsTuples
+      s0 <- hier(s)
+      if s0 != s
+      if hierCompsTuples((r1, r2, s0))
+    } yield (r1, r2, s)
+    val hierComps = (hierCompsTuples -- hierCompsRemove).groupBy(_._1).map {
+      case (r1, values) => r1 -> (values.map {
+        case (r1, r2, s) => (r2, s)
+      }).groupBy(_._1).map {
+        case (r2, ss) => r2 -> ss.map(_._2)
+      }
+    }
     val negativeConcepts = concIncs.flatMap(_.subclass.conceptSignature)
     val negConjs = negativeConcepts.collect { case conj: Conjunction => conj }
     val negConjsByOperand = negConjs.groupBy(_.left).map { case (concept, m) => concept -> m.map(conj => conj.right -> conj).toMap }
@@ -52,7 +77,7 @@ object Reasoner {
     val negExistsMapByConcept = negativeConcepts.collect { case er: ExistentialRestriction => er }.groupBy(_.concept).map {
       case (concept, ers) => concept -> ers.map(er => er.role -> er).toMap
     }
-    empty.copy(todo = todo, concIncs = concIncs, concIncsBySubclass = concIncsBySubclass, hier = hier, negConjs = negConjs, negConjsByOperand = negConjsByOperand, negExists = negExists, negExistsMap = negExistsMap, negExistsMapByConcept = negExistsMapByConcept, topOccursNegatively = negativeConcepts(Top))
+    empty.copy(todo = todo, concIncs = concIncs, concIncsBySubclass = concIncsBySubclass, hier = hier, roleComps = roleComps, hierComps = hierComps, negConjs = negConjs, negConjsByOperand = negConjsByOperand, negExists = negExists, negExistsMap = negExistsMap, negExistsMapByConcept = negExistsMapByConcept, topOccursNegatively = negativeConcepts(Top))
   }
 
   @tailrec
@@ -70,7 +95,7 @@ object Reasoner {
       import scalaz.syntax.semigroup._
       val propagations: Map[Concept, Map[Role, Set[ExistentialRestriction]]] = reasoner.propagations |+| Map(ci.subclass -> reasoner.negExistsMapByConcept.getOrElse(ci.superclass, Map.empty).map { case (role, er) => role -> Set(er) })
       //`R⊑`(ci, `R+∃`(ci, `R-∃`(ci, `R+⨅`(ci, `R-⨅`(ci, `R⊥`(ci, reasoner.copy(subs = subs, subsBySubclass = subsBySubclass, propagations = propagations)))))))
-      `R⊑`(ci, `R+∃old`(ci, `R-∃`(ci, `R+⨅`(ci, `R-⨅`(ci, `R⊥`(ci, reasoner.copy(subs = subs, subsBySubclass = subsBySubclass)))))))
+      `R⊑`(ci, `R+∃old`(ci, `R-∃`(ci, `R+⨅`(ci, `R-⨅`(ci, `R⊥`(ci, reasoner.copy(subs = subs, subsBySubclass = subsBySubclass, propagations = propagations)))))))
     }
     case `Sub+`(ci @ ConceptInclusion(subclass, superclass)) => if (reasoner.subs(ci)) reasoner else {
       val subs = reasoner.subs + ci
@@ -78,7 +103,7 @@ object Reasoner {
       import scalaz.syntax.semigroup._
       val propagations: Map[Concept, Map[Role, Set[ExistentialRestriction]]] = reasoner.propagations |+| Map(ci.subclass -> reasoner.negExistsMapByConcept.getOrElse(ci.superclass, Map.empty).map { case (role, er) => role -> Set(er) })
       //`R⊑`(ci, `R+∃`(ci, `R-∃`(ci, `R+⨅`(ci, `R-⨅`(ci, `R⊥`(ci, reasoner.copy(subs = subs, subsBySubclass = subsBySubclass, propagations = propagations)))))))
-      `R⊑`(ci, `R+∃old`(ci, `R+⨅`(ci, `R⊥`(ci, reasoner.copy(subs = subs, subsBySubclass = subsBySubclass)))))
+      `R⊑`(ci, `R+∃old`(ci, `R+⨅`(ci, `R⊥`(ci, reasoner.copy(subs = subs, subsBySubclass = subsBySubclass, propagations = propagations)))))
     }
     case link @ Link(subclass, role, superclass) => if (reasoner.links(link)) reasoner else {
       val links = reasoner.links + link
@@ -200,7 +225,19 @@ object Reasoner {
     reasoner.copy(todo = todo)
   }
 
-  private def `R∘`(link: Link, reasoner: Reasoner): Reasoner = { //*
+  private def `R∘`(link: Link, reasoner: Reasoner): Reasoner = {
+    var todo = reasoner.todo
+    for {
+      Link(_, r2, d) <- reasoner.linksBySubject.getOrElse(link.target, Nil)
+      r2s <- reasoner.hierComps.get(link.role)
+      ss <- r2s.get(r2)
+      s <- ss
+      //s <- r2s.getOrElse(r2, Set.empty)
+    } todo = todo.enqueue(Link(link.subject, s, d))
+    reasoner.copy(todo = todo)
+  }
+
+  private def `R∘old`(link: Link, reasoner: Reasoner): Reasoner = { //*
     var todo = reasoner.todo
     for {
       Link(_, r2, d) <- reasoner.linksBySubject.getOrElse(link.target, Nil)

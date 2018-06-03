@@ -38,7 +38,11 @@ object Test extends App {
   //val reasoner = Reasoner.prepare(Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create("http://purl.obolibrary.org/obo/pato.owl"))))
   val uberonAxioms = Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File("../../Source/obo-asserted/uberon.owl"))))
   val goAxioms = Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File("../../Source/obo-asserted/go.owl"))))
+  //val reasoner = Reasoner.prepare(Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File("skeletons.ofn")))))
+  val startPrepare = System.currentTimeMillis
   val reasoner = Reasoner.prepare(goAxioms ++ uberonAxioms)
+  val stopPrepare = System.currentTimeMillis
+  println(s"Initialized in: ${stopPrepare - startPrepare} ms")
   println("Start")
   val start = System.currentTimeMillis
   val done = Reasoner.computeClosure(reasoner)
@@ -50,5 +54,11 @@ object Test extends App {
   println(reasoner.concIncs.size)
   println(done.subs.size - reasoner.concIncs.size)
   println(done.subs.size)
+  val named = done.subs.filter {
+    case ConceptInclusion(sub: AtomicConcept, sup: AtomicConcept) if sub != sup => true
+    case _ => false
+  }
+  println(named.size)
+  //named.foreach(println)
 
 }
