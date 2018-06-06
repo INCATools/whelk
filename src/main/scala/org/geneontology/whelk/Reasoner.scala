@@ -33,13 +33,14 @@ object Reasoner {
 
   val empty: Reasoner = Reasoner(Queue.empty, Set.empty, Map.empty, Set.empty, Set.empty, Map.empty, Set.empty, Map.empty, Map.empty, Set.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Set.empty, Map.empty, Map.empty, Map.empty, Map.empty, false)
 
-  def prepare(axioms: Set[Axiom]): Reasoner = {
-    val concIncs = axioms.collect { case ci: ConceptInclusion => ci }
-    val concIncsBySubclass = concIncs.groupBy(_.subclass).map { case (concept, cis) => concept -> cis.toList }
-    val todo = Queue.empty.enqueue(concIncs)
+  def index(axioms: Set[Axiom], reasoner: Reasoner): Reasoner = {
+    import scalaz.syntax.semigroup._
+    val concIncs = reasoner.concIncs |+| axioms.collect { case ci: ConceptInclusion => ci }
+    val concIncsBySubclass = reasoner.concIncsBySubclass |+| concIncs.groupBy(_.subclass).map { case (concept, cis) => concept -> cis.toList }
+    val todo = reasoner.todo.enqueue(concIncs)
+    /////////
     val allRoles = axioms.flatMap(_.signature).collect { case role: Role => role }
     val allRoleInclusions = axioms.collect { case ri: RoleInclusion => ri }
-    import scalaz.syntax.semigroup._
     val hier = saturateRoles(allRoleInclusions) |+| allRoles.map(r => r -> Set(r)).toMap
     val roleComps = axioms.collect { case rc: RoleComposition => rc }.groupBy(rc => (rc.first, rc.second)).map {
       case (key, ris) =>
@@ -65,19 +66,20 @@ object Reasoner {
         case (r2, ss) => r2 -> ss.map(_._2)
       }
     }
+    ////////
     val negativeConcepts = concIncs.flatMap(_.subclass.conceptSignature)
-    val negConjs = negativeConcepts.collect { case conj: Conjunction => conj }
+    val negConjs = reasoner.negConjs |+| negativeConcepts.collect { case conj: Conjunction => conj }
     val negConjsByOperand = negConjs.groupBy(_.left).map { case (concept, m) => concept -> m.map(conj => conj.right -> conj).toMap }
     val negConjsByOperandLeft = negConjs.groupBy(_.left).map { case (concept, m) => concept -> m.map(conj => conj.right -> conj).toMap }
     val negConjsByOperandRight = negConjs.groupBy(_.right).map { case (concept, m) => concept -> m.map(conj => conj.left -> conj).toMap }
-    val negExists = negativeConcepts.collect { case er: ExistentialRestriction => er }
-    val negExistsMap = negativeConcepts.collect { case er: ExistentialRestriction => er }.groupBy(_.role).map {
+    val negExists = reasoner.negExists |+| negativeConcepts.collect { case er: ExistentialRestriction => er }
+    val negExistsMap = negExists.groupBy(_.role).map {
       case (role, ers) => role -> ers.map(er => er.concept -> er).toMap
     }
-    val negExistsMapByConcept = negativeConcepts.collect { case er: ExistentialRestriction => er }.groupBy(_.concept).map {
+    val negExistsMapByConcept = negExists.groupBy(_.concept).map {
       case (concept, ers) => concept -> ers.map(er => er.role -> er).toMap
     }
-    empty.copy(todo = todo, concIncs = concIncs, concIncsBySubclass = concIncsBySubclass, hier = hier, roleComps = roleComps, hierComps = hierComps, negConjs = negConjs, negConjsByOperand = negConjsByOperand, negExists = negExists, negExistsMap = negExistsMap, negExistsMapByConcept = negExistsMapByConcept, topOccursNegatively = negativeConcepts(Top))
+    reasoner.copy(todo = todo, concIncs = concIncs, concIncsBySubclass = concIncsBySubclass, hier = hier, roleComps = roleComps, hierComps = hierComps, negConjs = negConjs, negConjsByOperand = negConjsByOperand, negExists = negExists, negExistsMap = negExistsMap, negExistsMapByConcept = negExistsMapByConcept, topOccursNegatively = negativeConcepts(Top))
   }
 
   @tailrec

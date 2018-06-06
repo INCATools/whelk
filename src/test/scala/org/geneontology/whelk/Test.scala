@@ -32,7 +32,7 @@ object Test extends App {
     ConceptInclusion(ExistentialRestriction(S, I), H),
     RoleInclusion(R, S))
 
-  val reasoner1 = Reasoner.prepare(axioms).copy(
+  val reasoner1 = Reasoner.index(axioms, Reasoner.empty).copy(
     roleComps = Map((S, S) -> Set(S)))
 
   //val reasoner = Reasoner.prepare(Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create("http://purl.obolibrary.org/obo/pato.owl"))))
@@ -40,7 +40,7 @@ object Test extends App {
   val goAxioms = Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File("../../Source/obo-asserted/go.owl"))))
   //val reasoner = Reasoner.prepare(Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File("skeletons.ofn")))))
   val startPrepare = System.currentTimeMillis
-  val reasoner = Reasoner.prepare(goAxioms ++ uberonAxioms)
+  val reasoner = Reasoner.index(goAxioms ++ uberonAxioms, Reasoner.empty)
   val stopPrepare = System.currentTimeMillis
   println(s"Initialized in: ${stopPrepare - startPrepare} ms")
   println("Start")
