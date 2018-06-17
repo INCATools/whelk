@@ -157,20 +157,16 @@ object ReteReasoner {
   }
 
   private def `R+⨅a`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = {
-    import scalaz.syntax.semigroup._
     val newNegativeConjunctions = ci.subclass.conceptSignature.collect { case conj: Conjunction => conj } //FIXME don't do anything if already seen
-    val newNegConjsByOperandLeft = mergeConjunctionIndexes(reasoner.assertedNegConjsByOperandLeft, newNegativeConjunctions.groupBy(_.left).map { case (concept, m) => concept -> m.map(conj => conj.right -> conj).toMap })
+    val newNegConjsByOperandLeft = newNegativeConjunctions.foldLeft(reasoner.assertedNegConjsByOperandLeft) {
+      case (acc, c @ Conjunction(left, right)) =>
+        val updated = acc.getOrElse(left, Map.empty) + (right -> c)
+        acc + (left -> updated)
+    }
     `R+⨅b-left`(newNegativeConjunctions, reasoner.copy(assertedNegConjsByOperandLeft = newNegConjsByOperandLeft))
   }
 
-  private def mergeConjunctionIndexes(existing: Map[Concept, Map[Concept, Conjunction]], toAdd: Map[Concept, Map[Concept, Conjunction]]): Map[Concept, Map[Concept, Conjunction]] =
-    toAdd.foldLeft(existing) {
-      case (acc, (concept, conjuncts)) =>
-        val newValue = acc.getOrElse(concept, Map.empty) ++ conjuncts
-        acc + (concept -> newValue)
-    }
-
-  private def mergeConjunctionIndexes2(existing: Map[Concept, Map[Concept, Set[Conjunction]]], toAdd: Iterable[(Concept, Conjunction)]): Map[Concept, Map[Concept, Set[Conjunction]]] =
+  private def mergeConjunctionIndexes(existing: Map[Concept, Map[Concept, Set[Conjunction]]], toAdd: Iterable[(Concept, Conjunction)]): Map[Concept, Map[Concept, Set[Conjunction]]] =
     toAdd.foldLeft(existing) {
       case (acc, (concept, conjunction)) =>
         val conjunctionsByRight = acc.getOrElse(concept, Map.empty)
@@ -186,7 +182,7 @@ object ReteReasoner {
       cs <- reasoner.closureSubsBySuperclass.get(conjunction.left).toIterable
       c <- cs
     } yield c -> conjunction
-    val newIndex = mergeConjunctionIndexes2(reasoner.conjunctionsBySubclassesOfLeftOperand, newSubclassesAndConjunctions)
+    val newIndex = mergeConjunctionIndexes(reasoner.conjunctionsBySubclassesOfLeftOperand, newSubclassesAndConjunctions)
     `R+⨅left`(newSubclassesAndConjunctions, reasoner.copy(conjunctionsBySubclassesOfLeftOperand = newIndex))
   }
 
@@ -195,7 +191,7 @@ object ReteReasoner {
       d2ToConjunctions <- reasoner.assertedNegConjsByOperandLeft.get(ci.superclass).toIterable
       conjunction <- d2ToConjunctions.values
     } yield ci.subclass -> conjunction
-    val newIndex = mergeConjunctionIndexes2(reasoner.conjunctionsBySubclassesOfLeftOperand, newSubclassesAndConjunctions)
+    val newIndex = mergeConjunctionIndexes(reasoner.conjunctionsBySubclassesOfLeftOperand, newSubclassesAndConjunctions)
     `R+⨅left`(newSubclassesAndConjunctions, reasoner.copy(conjunctionsBySubclassesOfLeftOperand = newIndex))
   }
 
