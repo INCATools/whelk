@@ -8,7 +8,7 @@ import BuiltIn._
 import scalaz._
 import scalaz.Scalaz._
 
-case class ReasonerState(
+final case class ReasonerState(
   hier:                                  Map[Role, Set[Role]], // initial
   hierComps:                             Map[Role, Map[Role, Set[Role]]], // initial
   assertions:                            Queue[ConceptInclusion],
@@ -58,30 +58,7 @@ object ReteReasoner {
     val allRoles = axioms.flatMap(_.signature).collect { case role: Role => role }
     val allRoleInclusions = axioms.collect { case ri: RoleInclusion => ri }
     val hier: Map[Role, Set[Role]] = saturateRoles(allRoleInclusions) |+| allRoles.map(r => r -> Set(r)).toMap
-    val roleComps = axioms.collect { case rc: RoleComposition => rc }.groupBy(rc => (rc.first, rc.second)).map {
-      case (key, ris) =>
-        key -> ris.map(_.superproperty)
-    }
-    val hierCompsTuples = (for {
-      (r1, s1s) <- hier
-      s1 <- s1s
-      (r2, s2s) <- hier
-      s2 <- s2s
-      s <- roleComps.getOrElse((s1, s2), Set.empty)
-    } yield (r1, r2, s)).toSet
-    val hierCompsRemove = for {
-      (r1, r2, s) <- hierCompsTuples
-      superS <- hier(s)
-      if superS != s
-      if hierCompsTuples((r1, r2, superS))
-    } yield (r1, r2, superS)
-    val hierComps = (hierCompsTuples -- hierCompsRemove).groupBy(_._1).map {
-      case (r1, values) => r1 -> (values.map {
-        case (r1, r2, s) => (r2, s)
-      }).groupBy(_._1).map {
-        case (r2, ss) => r2 -> ss.map(_._2)
-      }
-    }
+    val hierComps = indexRoleCompositions(hier, axioms.collect { case rc: RoleComposition => rc })
     val concIncs = axioms.collect { case ci: ConceptInclusion => ci }
     assert(concIncs, ReasonerState.empty.copy(hier = hier, hierComps = hierComps))
   }
@@ -340,6 +317,34 @@ object ReteReasoner {
       superSuperProp <- allSupers(superProp) + superProp
     } yield superSuperProp
     subToSuper.keys.map(role => role -> allSupers(role)).toMap
+  }
+
+  private def indexRoleCompositions(hier: Map[Role, Set[Role]], chains: Set[RoleComposition]): Map[Role, Map[Role, Set[Role]]] = {
+    val roleComps = chains.groupBy(rc => (rc.first, rc.second)).map {
+      case (key, ris) =>
+        key -> ris.map(_.superproperty)
+    }
+    val hierCompsTuples = (for {
+      (r1, s1s) <- hier
+      s1 <- s1s
+      (r2, s2s) <- hier
+      s2 <- s2s
+      s <- roleComps.getOrElse((s1, s2), Set.empty)
+    } yield (r1, r2, s)).toSet
+    val hierCompsRemove = for {
+      (r1, r2, s) <- hierCompsTuples
+      superS <- hier(s)
+      if superS != s
+      if hierCompsTuples((r1, r2, superS))
+    } yield (r1, r2, superS)
+    val hierComps = (hierCompsTuples -- hierCompsRemove).groupBy(_._1).map {
+      case (r1, values) => r1 -> (values.map {
+        case (r1, r2, s) => (r2, s)
+      }).groupBy(_._1).map {
+        case (r2, ss) => r2 -> ss.map(_._2)
+      }
+    }
+    hierComps
   }
 
 }
