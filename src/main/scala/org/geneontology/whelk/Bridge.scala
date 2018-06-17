@@ -7,6 +7,9 @@ import org.semanticweb.owlapi.model.OWLAxiom
 import org.semanticweb.owlapi.model.OWLClassExpression
 import org.semanticweb.owlapi.model.OWLOntology
 import org.semanticweb.owlapi.model.parameters.Imports
+import scala.collection.JavaConverters._
+
+import BuiltIn._
 
 object Bridge {
 
@@ -17,18 +20,18 @@ object Bridge {
       case (Some(subConcept), Some(superConcept)) => Set(ConceptInclusion(subConcept, superConcept))
       case _                                      => Set.empty
     }
-    case EquivalentClasses(_, operands) if operands.size == 2 => //FIXME handle >2
-      val converted = operands.map(convertExpression).toSeq
-      (converted(0), converted(1)) match {
-        case (Some(left), Some(right)) => Set(ConceptInclusion(left, right), ConceptInclusion(right, left))
-        case _                         => Set.empty
-      }
+    case EquivalentClasses(_, operands) =>
+      val converted = operands.map(convertExpression).toList.collect { case Some(concept) => concept }
+      converted.combinations(2).flatMap {
+        case first :: second :: Nil =>
+          Set(ConceptInclusion(first, second), ConceptInclusion(second, first))
+      }.toSet
     case DisjointClasses(_, operands) if operands.size == 2 => //FIXME handle >2
-      val converted = operands.map(convertExpression).toSeq
-      (converted(0), converted(1)) match {
-        case (Some(left), Some(right)) => Set(ConceptInclusion(Conjunction(left, right), Bottom))
-        case _                         => Set.empty
-      }
+      val converted = operands.map(convertExpression).toList.collect { case Some(concept) => concept }
+      converted.combinations(2).flatMap {
+        case first :: second :: Nil =>
+          Set(ConceptInclusion(Conjunction(first, second), Bottom))
+      }.toSet
     case SubObjectPropertyOf(_, ObjectProperty(subproperty), ObjectProperty(superproperty)) =>
       Set(RoleInclusion(Role(subproperty.toString), Role(superproperty.toString)))
     case SubObjectPropertyChainOf(_, ObjectProperty(first) :: ObjectProperty(second) :: Nil, ObjectProperty(superproperty)) => //FIXME handle >2
@@ -45,12 +48,16 @@ object Bridge {
     case OWLNothing => Some(Bottom)
     case Class(iri) => Some(AtomicConcept(iri.toString))
     case ObjectSomeValuesFrom(ObjectProperty(prop), filler) => convertExpression(filler).map(ExistentialRestriction(Role(prop.toString), _))
-    case ObjectIntersectionOf(operands) if operands.size == 2 => //FIXME convert >2 to binary
-      val converted = operands.toSeq.map(convertExpression)
-      (converted(0), converted(1)) match {
-        case (Some(left), Some(right)) => Some(Conjunction(left, right))
-        case _                         => None
+    case ObjectIntersectionOf(operands) if operands.size >= 2 => //FIXME convert >2 to binary
+      def convert(items: List[Concept]): Concept = items match {
+        case first :: second :: Nil  => Conjunction(first, second)
+        case first :: second :: rest => Conjunction(first, convert(second :: rest))
+        case first :: Nil            => first
       }
+      val converted = operands.toList.map(convertExpression)
+      if (converted.forall(_.nonEmpty))
+        Some(convert(converted.collect { case Some(operand) => operand }))
+      else None
     case other =>
       //println(s"Not supported: $other")
       None

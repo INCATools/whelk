@@ -2,6 +2,7 @@ package org.geneontology.whelk
 
 import scala.annotation.tailrec
 import scala.collection.immutable.Queue
+import BuiltIn._
 
 import scalaz._
 import scalaz.Scalaz._

@@ -31,6 +31,7 @@ libraryDependencies ++= {
     "org.backuity.clist"          %% "clist-macros"           % "3.5.0" % "provided",
     "com.typesafe.scala-logging"  %% "scala-logging"          % "3.9.0",
     "ch.qos.logback"              %  "logback-classic"        % "1.2.3",
-    "org.codehaus.groovy"         %  "groovy-all"             % "2.4.6"
+    "org.codehaus.groovy"         %  "groovy-all"             % "2.4.6",
+    "org.semanticweb.elk"         %  "elk-owlapi"             % "0.4.3" % Test,
   )
 }

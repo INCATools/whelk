@@ -28,23 +28,13 @@ final case class AtomicConcept(id: String) extends Concept with Entity {
 
 }
 
-final case object Top extends Concept with Entity {
+final object BuiltIn {
+  
+  private val owl = "http://www.w3.org/2002/07/owl"
 
-  def conceptSignature: Set[Concept] = Set(this)
+  final val Top = AtomicConcept(s"$owl#Thing")
 
-  def signature: Set[Entity] = Set(this)
-
-  override val hashCode: Int = super.hashCode
-
-}
-
-final case object Bottom extends Concept with Entity {
-
-  def conceptSignature: Set[Concept] = Set(this)
-
-  def signature: Set[Entity] = Set(this)
-
-  override val hashCode: Int = super.hashCode
+  final val Bottom = AtomicConcept(s"$owl#Nothing")
 
 }
 
