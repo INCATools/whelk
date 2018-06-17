@@ -71,10 +71,10 @@ object ReteReasoner {
     } yield (r1, r2, s)).toSet
     val hierCompsRemove = for {
       (r1, r2, s) <- hierCompsTuples
-      s0 <- hier(s)
-      if s0 != s
-      if hierCompsTuples((r1, r2, s0))
-    } yield (r1, r2, s)
+      superS <- hier(s)
+      if superS != s
+      if hierCompsTuples((r1, r2, superS))
+    } yield (r1, r2, superS)
     val hierComps = (hierCompsTuples -- hierCompsRemove).groupBy(_._1).map {
       case (r1, values) => r1 -> (values.map {
         case (r1, r2, s) => (r2, s)
@@ -302,7 +302,7 @@ object ReteReasoner {
     var todo = reasoner.todo
     for {
       roleToER <- reasoner.propagations.get(link.target).toIterable
-      s <- reasoner.hier.getOrElse(link.role, Set.empty)
+      s <- reasoner.hier(link.role)
       fs <- roleToER.get(s)
       f <- fs
     } todo = todo.enqueue(`Sub+`(ConceptInclusion(link.subject, f)))
@@ -333,7 +333,7 @@ object ReteReasoner {
 
   private def `R⤳`(link: Link, reasoner: ReasonerState): ReasonerState = reasoner.copy(todo = reasoner.todo.enqueue(link.target))
 
-  private def saturateRoles(roleInclusions: Set[RoleInclusion]): Map[Role, Set[Role]] = { //FIXME can do this better
+  private def saturateRoles(roleInclusions: Set[RoleInclusion]): Map[Role, Set[Role]] = { //FIXME can do this better?
     val subToSuper = roleInclusions.groupBy(_.subproperty).map { case (sub, ri) => sub -> ri.map(_.superproperty) }
     def allSupers(role: Role): Set[Role] = for {
       superProp <- subToSuper.getOrElse(role, Set.empty)

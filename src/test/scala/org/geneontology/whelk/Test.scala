@@ -11,34 +11,6 @@ import BuiltIn.Bottom
 
 object Test extends App {
 
-  val A = AtomicConcept("A")
-  val B = AtomicConcept("B")
-  val C = AtomicConcept("C")
-  val D = AtomicConcept("D")
-  val E = AtomicConcept("E")
-  val F = AtomicConcept("F")
-  val G = AtomicConcept("G")
-  val H = AtomicConcept("H")
-  val I = AtomicConcept("I")
-  val R = Role("R")
-  val S = Role("S")
-
-  val axioms = Set[Axiom](
-    ConceptInclusion(A, B),
-    ConceptInclusion(B, C),
-    ConceptInclusion(D, E),
-    ConceptInclusion(B, ExistentialRestriction(R, D)),
-    ConceptInclusion(ExistentialRestriction(R, E), F),
-    ConceptInclusion(G, Conjunction(C, F)),
-    ConceptInclusion(Conjunction(C, F), G),
-    ConceptInclusion(D, ExistentialRestriction(S, H)),
-    ConceptInclusion(H, ExistentialRestriction(S, I)),
-    ConceptInclusion(ExistentialRestriction(S, I), H),
-    RoleInclusion(R, S))
-
-  val reasoner1 = Reasoner.index(axioms, Reasoner.empty).copy(
-    roleComps = Map((S, S) -> Set(S)))
-
   //val reasoner = Reasoner.prepare(Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create("http://purl.obolibrary.org/obo/pato.owl"))))
   val ontology = OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File("uberon-trimmed.ofn")))
   val uberonAxioms = Bridge.ontologyToAxioms(ontology)
@@ -52,6 +24,19 @@ object Test extends App {
 
   //done.subs.foreach(println)
   println("================")
+
+  val query = ConceptInclusion(
+    Conjunction(
+      AtomicConcept("http://purl.obolibrary.org/obo/UBERON_0001630"),
+      ExistentialRestriction(Role("http://purl.obolibrary.org/obo/BFO_0000050"), AtomicConcept("http://purl.obolibrary.org/obo/UBERON_0000033"))),
+    AtomicConcept("http://example.org/muscle_of_head"))
+  val queryStart = System.currentTimeMillis
+  val newDone = ReteReasoner.assert(Set(query), done)
+  val queryStop = System.currentTimeMillis
+  println(s"Classified query in ${queryStop - queryStart} ms")
+  val subclasses = newDone.subs.filter(_.superclass == AtomicConcept("http://example.org/muscle_of_head")).map(_.subclass).collect { case x: AtomicConcept => x }
+  //subclasses.foreach(println)
+
   //done.subs.collect { case (ci @ ConceptInclusion(AtomicConcept(_), AtomicConcept(_))) => ci }.foreach(println)
   //println(done.concIncs.size)
   //println(done.subs.size - reasoner.concIncs.size)
@@ -83,5 +68,11 @@ object Test extends App {
   println(missingFromWhelk.take(20))
   println(s"Missing from Elk: ${missingFromElk.size}:")
   println(missingFromElk.take(20))
+
+//  println(done.hier(Role("http://purl.obolibrary.org/obo/BFO_0000050")))
+//  println(done.hier(Role("http://purl.obolibrary.org/obo/RO_0002202")))
+//  println("==================")
+//  println(done.hierComps(Role("http://purl.obolibrary.org/obo/BFO_0000050")))
+//  println(done.hierComps(Role("http://purl.obolibrary.org/obo/RO_0002202")))
 
 }
