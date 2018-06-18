@@ -21,7 +21,7 @@ final case class ReasonerState(
   links:                                 Set[Link], // closure
   linksBySubject:                        Map[Concept, List[Link]],
   linksByTarget:                         Map[Concept, List[Link]],
-  negExistsMapByConcept:                 Map[Concept, Map[Role, ExistentialRestriction]], // can this just have group on ers?
+  negExistsMapByConcept:                 Map[Concept, Set[ExistentialRestriction]],
   propagations:                          Map[Concept, Map[Role, List[ExistentialRestriction]]]) //TODO see if this Set can be a List -- update, not really faster (TODO: compare for duplicates)
 
 object ReasonerState {
@@ -202,7 +202,7 @@ object Reasoner {
   private def `R+∃a`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = {
     val newNegativeExistentials = ci.subclass.conceptSignature.collect { case er: ExistentialRestriction => er }
     val negExistsMapByConcept = newNegativeExistentials.foldLeft(reasoner.negExistsMapByConcept) { (acc, er) =>
-      val updated = acc.getOrElse(er.concept, Map.empty) + (er.role -> er)
+      val updated = acc.getOrElse(er.concept, Set.empty) + er
       acc + (er.concept -> updated)
     }
     `R+∃b-left`(newNegativeExistentials, reasoner.copy(negExistsMapByConcept = negExistsMapByConcept))
@@ -225,8 +225,8 @@ object Reasoner {
 
   private def `R+∃b-right`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = {
     val newPropagations = for {
-      roleToER <- reasoner.negExistsMapByConcept.get(ci.superclass).toIterable
-      er <- roleToER.values
+      ers <- reasoner.negExistsMapByConcept.get(ci.superclass).toIterable
+      er <- ers
     } yield ci.subclass -> er
     val propagations = newPropagations.foldLeft(reasoner.propagations) {
       case (acc, (concept, er)) =>
