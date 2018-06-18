@@ -29,7 +29,7 @@ final case class AtomicConcept(id: String) extends Concept with Entity {
 }
 
 final object BuiltIn {
-  
+
   private val owl = "http://www.w3.org/2002/07/owl"
 
   final val Top = AtomicConcept(s"$owl#Thing")

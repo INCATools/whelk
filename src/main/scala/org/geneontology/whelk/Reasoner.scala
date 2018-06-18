@@ -30,7 +30,7 @@ object ReasonerState {
 
 }
 
-object ReteReasoner {
+object Reasoner {
 
   def assert(axioms: Set[Axiom]): ReasonerState = {
     import scalaz.syntax.semigroup._

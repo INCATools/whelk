@@ -1,12 +1,14 @@
 package org.geneontology.whelk
 
-import scala.collection.immutable.Queue
+import java.io.File
+
+import scala.collection.JavaConverters._
+
+import org.phenoscape.scowl._
+import org.semanticweb.elk.owlapi.ElkReasonerFactory
 import org.semanticweb.owlapi.apibinding.OWLManager
 import org.semanticweb.owlapi.model.IRI
-import java.io.File
-import org.semanticweb.elk.owlapi.ElkReasonerFactory
-import org.phenoscape.scowl._
-import scala.collection.JavaConverters._
+
 import BuiltIn.Bottom
 
 object Test extends App {
@@ -18,7 +20,7 @@ object Test extends App {
   //val reasoner = Reasoner.prepare(Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File("skeletons.ofn")))))
   println("Start")
   val start = System.currentTimeMillis
-  val done = ReteReasoner.assert(uberonAxioms)
+  val done = Reasoner.assert(uberonAxioms)
   val stop = System.currentTimeMillis
   println(s"Reasoned in: ${stop - start} ms")
 
@@ -31,7 +33,7 @@ object Test extends App {
       ExistentialRestriction(Role("http://purl.obolibrary.org/obo/BFO_0000050"), AtomicConcept("http://purl.obolibrary.org/obo/UBERON_0000033"))),
     AtomicConcept("http://example.org/muscle_of_head"))
   val queryStart = System.currentTimeMillis
-  val newDone = ReteReasoner.assert(Set(query), done)
+  val newDone = Reasoner.assert(Set(query), done)
   val queryStop = System.currentTimeMillis
   println(s"Classified query in ${queryStop - queryStart} ms")
   val subclasses = newDone.subs.filter(_.superclass == AtomicConcept("http://example.org/muscle_of_head")).map(_.subclass).collect { case x: AtomicConcept => x }
@@ -69,10 +71,10 @@ object Test extends App {
   println(s"Missing from Elk: ${missingFromElk.size}:")
   println(missingFromElk.take(20))
 
-//  println(done.hier(Role("http://purl.obolibrary.org/obo/BFO_0000050")))
-//  println(done.hier(Role("http://purl.obolibrary.org/obo/RO_0002202")))
-//  println("==================")
-//  println(done.hierComps(Role("http://purl.obolibrary.org/obo/BFO_0000050")))
-//  println(done.hierComps(Role("http://purl.obolibrary.org/obo/RO_0002202")))
+  //  println(done.hier(Role("http://purl.obolibrary.org/obo/BFO_0000050")))
+  //  println(done.hier(Role("http://purl.obolibrary.org/obo/RO_0002202")))
+  //  println("==================")
+  //  println(done.hierComps(Role("http://purl.obolibrary.org/obo/BFO_0000050")))
+  //  println(done.hierComps(Role("http://purl.obolibrary.org/obo/RO_0002202")))
 
 }
