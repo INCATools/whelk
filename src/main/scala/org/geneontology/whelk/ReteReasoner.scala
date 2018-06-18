@@ -1,10 +1,8 @@
 package org.geneontology.whelk
 
-import scala.annotation.tailrec
 import scala.collection.immutable.Queue
 
 import BuiltIn._
-
 import scalaz._
 import scalaz.Scalaz._
 
@@ -24,7 +22,7 @@ final case class ReasonerState(
   linksBySubject:                        Map[Concept, List[Link]],
   linksByTarget:                         Map[Concept, List[Link]],
   negExistsMapByConcept:                 Map[Concept, Map[Role, ExistentialRestriction]], // can this just have group on ers?
-  propagations:                          Map[Concept, Map[Role, Set[ExistentialRestriction]]])
+  propagations:                          Map[Concept, Map[Role, List[ExistentialRestriction]]]) //TODO see if this Set can be a List -- update, not really faster (TODO: compare for duplicates)
 
 object ReasonerState {
 
@@ -138,7 +136,7 @@ object ReteReasoner {
   }
 
   private def `R+⨅a`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = {
-    val newNegativeConjunctions = ci.subclass.conceptSignature.collect { case conj: Conjunction => conj } //FIXME don't do anything if already seen
+    val newNegativeConjunctions = ci.subclass.conceptSignature.collect { case conj: Conjunction => conj }
     val newNegConjsByOperandLeft = newNegativeConjunctions.foldLeft(reasoner.assertedNegConjsByOperandLeft) {
       case (acc, c @ Conjunction(left, right)) =>
         val updated = acc.getOrElse(left, Map.empty) + (right -> c)
@@ -157,7 +155,6 @@ object ReteReasoner {
     }
 
   private def `R+⨅b-left`(newNegativeConjunctions: Iterable[Conjunction], reasoner: ReasonerState): ReasonerState = {
-    //TODO how often does this find repeats?
     val newSubclassesAndConjunctions = for {
       conjunction <- newNegativeConjunctions
       cs <- reasoner.closureSubsBySuperclass.get(conjunction.left).toIterable
@@ -192,7 +189,6 @@ object ReteReasoner {
       conjunctionsByRight <- reasoner.conjunctionsBySubclassesOfLeftOperand.get(ci.subclass)
       conjunctions <- conjunctionsByRight.get(ci.superclass)
       conjunction <- conjunctions
-      //if conjunction.right == ci.superclass
     } todo = todo.enqueue(`Sub+`(ConceptInclusion(ci.subclass, conjunction)))
     reasoner.copy(todo = todo)
   }
@@ -204,7 +200,7 @@ object ReteReasoner {
   }
 
   private def `R+∃a`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = {
-    val newNegativeExistentials = ci.subclass.conceptSignature.collect { case er: ExistentialRestriction => er } //FIXME don't do anything if already seen
+    val newNegativeExistentials = ci.subclass.conceptSignature.collect { case er: ExistentialRestriction => er }
     val negExistsMapByConcept = newNegativeExistentials.foldLeft(reasoner.negExistsMapByConcept) { (acc, er) =>
       val updated = acc.getOrElse(er.concept, Map.empty) + (er.role -> er)
       acc + (er.concept -> updated)
@@ -221,8 +217,8 @@ object ReteReasoner {
     val propagations = newPropagations.foldLeft(reasoner.propagations) {
       case (acc, (concept, er)) =>
         val current = acc.getOrElse(er.concept, Map.empty)
-        val newSet = current.getOrElse(er.role, Set.empty) + er
-        acc + (er.concept -> (current + (er.role -> newSet)))
+        val newList = er :: current.getOrElse(er.role, Nil)
+        acc + (er.concept -> (current + (er.role -> newList)))
     }
     `R+∃left`(newPropagations, reasoner.copy(propagations = propagations))
   }
@@ -235,8 +231,8 @@ object ReteReasoner {
     val propagations = newPropagations.foldLeft(reasoner.propagations) {
       case (acc, (concept, er)) =>
         val current = acc.getOrElse(concept, Map.empty)
-        val newSet = current.getOrElse(er.role, Set.empty) + er
-        acc + (concept -> (current + (er.role -> newSet)))
+        val newList = er :: current.getOrElse(er.role, Nil)
+        acc + (concept -> (current + (er.role -> newList)))
     }
     `R+∃left`(newPropagations, reasoner.copy(propagations = propagations))
   }
