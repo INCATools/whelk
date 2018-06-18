@@ -18,7 +18,6 @@ final case class ReasonerState(
   subs:                                  Set[ConceptInclusion], // closure
   assertedConceptInclusionsBySubclass:   Map[Concept, List[ConceptInclusion]],
   closureSubsBySuperclass:               Map[Concept, Set[Concept]],
-  closureSubsBySubclass:                 Map[Concept, Set[Concept]],
   assertedNegConjsByOperandLeft:         Map[Concept, Map[Concept, Conjunction]], // can this just have group of conjunctions instead of Map
   conjunctionsBySubclassesOfLeftOperand: Map[Concept, Map[Concept, Set[Conjunction]]], // Map[subclassOfLeftOperand, Map[rightOperand, Conjunction]]
   links:                                 Set[Link], // closure
@@ -29,7 +28,7 @@ final case class ReasonerState(
 
 object ReasonerState {
 
-  val empty: ReasonerState = ReasonerState(Map.empty, Map.empty, Queue.empty, Queue.empty, false, Set.empty, Set.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Set.empty, Map.empty, Map.empty, Map.empty, Map.empty)
+  val empty: ReasonerState = ReasonerState(Map.empty, Map.empty, Queue.empty, Queue.empty, false, Set.empty, Set.empty, Map.empty, Map.empty, Map.empty, Map.empty, Set.empty, Map.empty, Map.empty, Map.empty, Map.empty)
 
 }
 
