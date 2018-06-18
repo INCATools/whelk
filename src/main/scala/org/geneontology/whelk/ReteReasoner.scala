@@ -35,24 +35,6 @@ object ReasonerState {
 
 object ReteReasoner {
 
-  val B = ConceptInclusion(
-    AtomicConcept("http://example.org/uberon#fused_metatarsal_bones_2-4"),
-    Conjunction(
-      ExistentialRestriction(
-        Role("http://example.org/uberon#has_fused_element"),
-        AtomicConcept("http://example.org/uberon#metatarsal_bone_of_digit_3")),
-      ExistentialRestriction(
-        Role("http://example.org/uberon#has_fused_element"),
-        AtomicConcept("http://example.org/uberon#metatarsal_bone_of_digit_4"))))
-
-  val A = ConceptInclusion(
-    AtomicConcept("http://example.org/uberon#fused_metatarsal_bones_2-4"),
-    AtomicConcept("http://example.org/uberon#metatarsal_bone"))
-
-  val C = ConceptInclusion(
-    AtomicConcept("http://example.org/uberon#fused_metatarsal_bones_2-4"),
-    AtomicConcept("http://example.org/uberon#fused_metatarsal_bones_2-4"))
-
   def assert(axioms: Set[Axiom]): ReasonerState = {
     import scalaz.syntax.semigroup._
     val allRoles = axioms.flatMap(_.signature).collect { case role: Role => role }
