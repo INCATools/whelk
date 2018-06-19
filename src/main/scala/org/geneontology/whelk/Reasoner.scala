@@ -64,7 +64,7 @@ object Reasoner {
   }
 
   private def processAssertedConceptInclusion(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = {
-    val updated = reasoner.assertedConceptInclusionsBySubclass + (ci.subclass -> (ci :: reasoner.assertedConceptInclusionsBySubclass.getOrElse(ci.subclass, Nil)))
+    val updated = reasoner.assertedConceptInclusionsBySubclass.updated(ci.subclass, (ci :: reasoner.assertedConceptInclusionsBySubclass.getOrElse(ci.subclass, Nil)))
     `R⊑left`(ci, `R+∃a`(ci, `R+⨅a`(ci, `R⊤left`(ci, reasoner.copy(assertedConceptInclusionsBySubclass = updated)))))
   }
 
@@ -75,21 +75,21 @@ object Reasoner {
       case ci @ ConceptInclusion(subclass, superclass) =>
         val subs = reasoner.closureSubsBySuperclass.getOrElse(superclass, Set.empty)
         if (subs(subclass)) reasoner else {
-          val closureSubsBySuperclass = reasoner.closureSubsBySuperclass + (superclass -> (subs + subclass))
+          val closureSubsBySuperclass = reasoner.closureSubsBySuperclass.updated(superclass, (subs + subclass))
           `R⊑right`(ci, `R+∃b-right`(ci, `R-∃`(ci, `R+⨅b-right`(ci, `R+⨅right`(ci, `R-⨅`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass))))))))
         }
       case `Sub+`(ci @ ConceptInclusion(subclass, superclass)) =>
         val subs = reasoner.closureSubsBySuperclass.getOrElse(superclass, Set.empty)
         if (subs(subclass)) reasoner else {
-          val closureSubsBySuperclass = reasoner.closureSubsBySuperclass + (superclass -> (subs + subclass))
+          val closureSubsBySuperclass = reasoner.closureSubsBySuperclass.updated(superclass, (subs + subclass))
           `R⊑right`(ci, `R+∃b-right`(ci, `R+⨅b-right`(ci, `R+⨅right`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass))))))
         }
       case link @ Link(subject, role, target) =>
         val links = reasoner.linksBySubject.getOrElse(subject, Set.empty)
         if (links(link)) reasoner else {
           val updatedLinks = links + link
-          val linksBySubject = reasoner.linksBySubject + (subject -> updatedLinks)
-          val linksByTarget = reasoner.linksByTarget + (target -> (link :: reasoner.linksByTarget.getOrElse(target, Nil)))
+          val linksBySubject = reasoner.linksBySubject.updated(subject, updatedLinks)
+          val linksByTarget = reasoner.linksByTarget.updated(target, (link :: reasoner.linksByTarget.getOrElse(target, Nil)))
           `R⤳`(link, `R∘left`(link, `R∘right`(link, `R+∃right`(link, `R⊥right`(link, reasoner.copy(linksBySubject = linksBySubject, linksByTarget = linksByTarget))))))
         }
     }
@@ -149,7 +149,7 @@ object Reasoner {
     val newNegConjsByOperandLeft = newNegativeConjunctions.foldLeft(reasoner.assertedNegConjsByOperandLeft) {
       case (acc, c @ Conjunction(left, right)) =>
         val updated = acc.getOrElse(left, Set.empty) + c
-        acc + (left -> updated)
+        acc.updated(left, updated)
     }
     `R+⨅b-left`(newNegativeConjunctions, reasoner.copy(assertedNegConjsByOperandLeft = newNegConjsByOperandLeft))
   }
@@ -159,8 +159,8 @@ object Reasoner {
       case (acc, (concept, conjunction)) =>
         val conjunctionsByRight = acc.getOrElse(concept, Map.empty)
         val newConjunctionsForThisRight = conjunctionsByRight.getOrElse(conjunction.right, Set.empty) + conjunction
-        val newValue = conjunctionsByRight + (conjunction.right -> newConjunctionsForThisRight)
-        acc + (concept -> newValue)
+        val newValue = conjunctionsByRight.updated(conjunction.right, newConjunctionsForThisRight)
+        acc.updated(concept, newValue)
     }
 
   private def `R+⨅b-left`(newNegativeConjunctions: Iterable[Conjunction], reasoner: ReasonerState): ReasonerState = {
@@ -212,7 +212,7 @@ object Reasoner {
     val newNegativeExistentials = ci.subclass.conceptSignature.collect { case er: ExistentialRestriction => er }
     val negExistsMapByConcept = newNegativeExistentials.foldLeft(reasoner.negExistsMapByConcept) { (acc, er) =>
       val updated = acc.getOrElse(er.concept, Set.empty) + er
-      acc + (er.concept -> updated)
+      acc.updated(er.concept, updated)
     }
     `R+∃b-left`(newNegativeExistentials, reasoner.copy(negExistsMapByConcept = negExistsMapByConcept))
   }
@@ -227,7 +227,7 @@ object Reasoner {
       case (acc, (concept, er)) =>
         val current = acc.getOrElse(er.concept, Map.empty)
         val newList = er :: current.getOrElse(er.role, Nil)
-        acc + (er.concept -> (current + (er.role -> newList)))
+        acc.updated(er.concept, (current.updated(er.role, newList)))
     }
     `R+∃left`(newPropagations, reasoner.copy(propagations = propagations))
   }
@@ -241,7 +241,7 @@ object Reasoner {
       case (acc, (concept, er)) =>
         val current = acc.getOrElse(concept, Map.empty)
         val newList = er :: current.getOrElse(er.role, Nil)
-        acc + (concept -> (current + (er.role -> newList)))
+        acc.updated(concept, (current.updated(er.role, newList)))
     }
     `R+∃left`(newPropagations, reasoner.copy(propagations = propagations))
   }
