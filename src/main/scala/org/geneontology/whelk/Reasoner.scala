@@ -15,8 +15,8 @@ final case class ReasonerState(
   closureSubsBySuperclass:                Map[Concept, Set[Concept]],
   assertedNegConjs:                       Set[Conjunction],
   assertedNegConjsByOperandRight:         Map[Concept, List[Conjunction]],
-  conjunctionsBySubclassesOfRightOperand: Map[Concept, Map[Concept, Set[Conjunction]]], // Map[subclassOfLeftOperand, Map[rightOperand, Conjunction]]
-  linksBySubject:                         Map[Concept, Map[Role, (Set[Concept], List[Concept])]],
+  conjunctionsBySubclassesOfRightOperand: Map[Concept, Map[Concept, Set[Conjunction]]], // Map[subclassOfRightOperand, Map[leftOperand, Conjunction]]
+  linksBySubject:                         Map[Concept, Map[Role, Set[Concept]]],
   linksByTarget:                          Map[Concept, Map[Role, List[Concept]]],
   negExistsMapByConcept:                  Map[Concept, Set[ExistentialRestriction]],
   propagations:                           Map[Concept, Map[Role, List[ExistentialRestriction]]]) {
@@ -85,11 +85,10 @@ object Reasoner {
         }
       case link @ Link(subject, role, target) =>
         val rolesToTargets = reasoner.linksBySubject.getOrElse(subject, Map.empty)
-        val (targetsSet, targetsList) = rolesToTargets.getOrElse(role, (Set.empty[Concept], Nil))
+        val targetsSet = rolesToTargets.getOrElse(role, Set.empty[Concept])
         if (targetsSet(target)) reasoner else {
           val updatedTargetsSet = targetsSet + target
-          val updatedTargetsList = target :: targetsList
-          val updatedRolesToTargets = rolesToTargets.updated(role, (updatedTargetsSet, updatedTargetsList))
+          val updatedRolesToTargets = rolesToTargets.updated(role, updatedTargetsSet)
           val linksBySubject = reasoner.linksBySubject.updated(subject, updatedRolesToTargets)
           val rolesToSubjects = reasoner.linksByTarget.getOrElse(target, Map.empty)
           val subjects = rolesToSubjects.getOrElse(role, Nil)
@@ -288,7 +287,7 @@ object Reasoner {
   private def `R∘right`(link: Link, reasoner: ReasonerState): ReasonerState = {
     var todo = reasoner.todo
     for {
-      (r2, (_, targets)) <- reasoner.linksBySubject.getOrElse(link.target, Map.empty)
+      (r2, targets) <- reasoner.linksBySubject.getOrElse(link.target, Map.empty)
       r2s <- reasoner.hierComps.get(link.role)
       ss <- r2s.get(r2)
       s <- ss
