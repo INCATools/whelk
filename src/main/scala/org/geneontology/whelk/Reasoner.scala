@@ -6,7 +6,7 @@ import scalaz.Scalaz._
 
 final case class ReasonerState(
   hier:                                   Map[Role, Set[Role]], // initial
-  hierComps:                              Map[Role, Map[Role, Set[Role]]], // initial
+  hierComps:                              Map[Role, Map[Role, List[Role]]], // initial
   assertions:                             List[ConceptInclusion],
   todo:                                   List[QueueExpression],
   topOccursNegatively:                    Boolean,
@@ -307,7 +307,7 @@ object Reasoner {
     subToSuper.keys.map(role => role -> allSupers(role)).toMap
   }
 
-  private def indexRoleCompositions(hier: Map[Role, Set[Role]], chains: Set[RoleComposition]): Map[Role, Map[Role, Set[Role]]] = {
+  private def indexRoleCompositions(hier: Map[Role, Set[Role]], chains: Set[RoleComposition]): Map[Role, Map[Role, List[Role]]] = {
     val roleComps = chains.groupBy(rc => (rc.first, rc.second)).map {
       case (key, ris) =>
         key -> ris.map(_.superproperty)
@@ -329,7 +329,7 @@ object Reasoner {
       case (r1, values) => r1 -> (values.map {
         case (r1, r2, s) => (r2, s)
       }).groupBy(_._1).map {
-        case (r2, ss) => r2 -> ss.map(_._2)
+        case (r2, ss) => r2 -> ss.map(_._2).toList
       }
     }
     hierComps
