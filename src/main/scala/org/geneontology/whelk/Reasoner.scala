@@ -1,7 +1,5 @@
 package org.geneontology.whelk
 
-import scala.collection.immutable.Queue
-
 import BuiltIn._
 import scalaz._
 import scalaz.Scalaz._
@@ -9,7 +7,7 @@ import scalaz.Scalaz._
 final case class ReasonerState(
   hier:                                   Map[Role, Set[Role]], // initial
   hierComps:                              Map[Role, Map[Role, Set[Role]]], // initial
-  assertions:                             Queue[ConceptInclusion],
+  assertions:                             List[ConceptInclusion],
   todo:                                   List[QueueExpression],
   topOccursNegatively:                    Boolean,
   inits:                                  Set[Concept], // closure
@@ -32,7 +30,7 @@ final case class ReasonerState(
 
 object ReasonerState {
 
-  val empty: ReasonerState = ReasonerState(Map.empty, Map.empty, Queue.empty, Nil, false, Set.empty, Map.empty, Map.empty, Set.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty)
+  val empty: ReasonerState = ReasonerState(Map.empty, Map.empty, Nil, Nil, false, Set.empty, Map.empty, Map.empty, Set.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty)
 
 }
 
@@ -50,13 +48,13 @@ object Reasoner {
 
   def assert(axioms: Set[ConceptInclusion], reasoner: ReasonerState): ReasonerState = {
     computeClosure(reasoner.copy(
-      assertions = reasoner.assertions.enqueue(axioms),
+      assertions = reasoner.assertions ::: axioms.toList,
       todo = reasoner.todo ::: axioms.toList))
   }
 
   private def computeClosure(reasoner: ReasonerState): ReasonerState = {
     if (reasoner.assertions.nonEmpty) {
-      val (item, todoAssertions) = reasoner.assertions.dequeue
+      val item :: todoAssertions = reasoner.assertions
       computeClosure(processAssertedConceptInclusion(item, reasoner.copy(assertions = todoAssertions)))
     } else if (reasoner.todo.nonEmpty) {
       val item :: todo = reasoner.todo
