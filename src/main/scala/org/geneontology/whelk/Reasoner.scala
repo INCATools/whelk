@@ -7,21 +7,21 @@ import scalaz._
 import scalaz.Scalaz._
 
 final case class ReasonerState(
-  hier:                                  Map[Role, Set[Role]], // initial
-  hierComps:                             Map[Role, Map[Role, Set[Role]]], // initial
-  assertions:                            Queue[ConceptInclusion],
-  todo:                                  List[QueueExpression],
-  topOccursNegatively:                   Boolean,
-  inits:                                 Set[Concept], // closure
-  assertedConceptInclusionsBySubclass:   Map[Concept, List[ConceptInclusion]],
-  closureSubsBySuperclass:               Map[Concept, Set[Concept]],
-  assertedNegConjs:                      Set[Conjunction],
-  assertedNegConjsByOperandLeft:         Map[Concept, List[Conjunction]],
-  conjunctionsBySubclassesOfLeftOperand: Map[Concept, Map[Concept, Set[Conjunction]]], // Map[subclassOfLeftOperand, Map[rightOperand, Conjunction]]
-  linksBySubject:                        Map[Concept, Map[Role, (Set[Concept], List[Concept])]],
-  linksByTarget:                         Map[Concept, Map[Role, List[Concept]]],
-  negExistsMapByConcept:                 Map[Concept, Set[ExistentialRestriction]],
-  propagations:                          Map[Concept, Map[Role, List[ExistentialRestriction]]]) {
+  hier:                                   Map[Role, Set[Role]], // initial
+  hierComps:                              Map[Role, Map[Role, Set[Role]]], // initial
+  assertions:                             Queue[ConceptInclusion],
+  todo:                                   List[QueueExpression],
+  topOccursNegatively:                    Boolean,
+  inits:                                  Set[Concept], // closure
+  assertedConceptInclusionsBySubclass:    Map[Concept, List[ConceptInclusion]],
+  closureSubsBySuperclass:                Map[Concept, Set[Concept]],
+  assertedNegConjs:                       Set[Conjunction],
+  assertedNegConjsByOperandRight:         Map[Concept, List[Conjunction]],
+  conjunctionsBySubclassesOfRightOperand: Map[Concept, Map[Concept, Set[Conjunction]]], // Map[subclassOfLeftOperand, Map[rightOperand, Conjunction]]
+  linksBySubject:                         Map[Concept, Map[Role, (Set[Concept], List[Concept])]],
+  linksByTarget:                          Map[Concept, Map[Role, List[Concept]]],
+  negExistsMapByConcept:                  Map[Concept, Set[ExistentialRestriction]],
+  propagations:                           Map[Concept, Map[Role, List[ExistentialRestriction]]]) {
 
   def subs: Set[ConceptInclusion] = closureSubsBySuperclass.flatMap {
     case (superclass, subclasses) =>
@@ -154,47 +154,47 @@ object Reasoner {
   private def `R+⨅a`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = {
     val newNegativeConjunctions = ci.subclass.conceptSignature.collect { case conj: Conjunction => conj }.filterNot(reasoner.assertedNegConjs)
     val newAssertedNegConjs = reasoner.assertedNegConjs ++ newNegativeConjunctions
-    val newNegConjsByOperandLeft = newNegativeConjunctions.foldLeft(reasoner.assertedNegConjsByOperandLeft) {
+    val newNegConjsByOperandRight = newNegativeConjunctions.foldLeft(reasoner.assertedNegConjsByOperandRight) {
       case (acc, c @ Conjunction(left, right)) =>
-        val updated = c :: acc.getOrElse(left, Nil)
-        acc.updated(left, updated)
+        val updated = c :: acc.getOrElse(right, Nil)
+        acc.updated(right, updated)
     }
-    `R+⨅b-left`(newNegativeConjunctions, reasoner.copy(assertedNegConjs = newAssertedNegConjs, assertedNegConjsByOperandLeft = newNegConjsByOperandLeft))
+    `R+⨅b-left`(newNegativeConjunctions, reasoner.copy(assertedNegConjs = newAssertedNegConjs, assertedNegConjsByOperandRight = newNegConjsByOperandRight))
   }
 
   private def mergeConjunctionIndexes(existing: Map[Concept, Map[Concept, Set[Conjunction]]], toAdd: Iterable[(Concept, Conjunction)]): Map[Concept, Map[Concept, Set[Conjunction]]] =
     toAdd.foldLeft(existing) {
       case (acc, (concept, conjunction)) =>
-        val conjunctionsByRight = acc.getOrElse(concept, Map.empty)
-        val newConjunctionsForThisRight = conjunctionsByRight.getOrElse(conjunction.right, Set.empty) + conjunction
-        val newValue = conjunctionsByRight.updated(conjunction.right, newConjunctionsForThisRight)
+        val conjunctionsByLeft = acc.getOrElse(concept, Map.empty)
+        val newConjunctionsForThisLeft = conjunctionsByLeft.getOrElse(conjunction.left, Set.empty) + conjunction
+        val newValue = conjunctionsByLeft.updated(conjunction.left, newConjunctionsForThisLeft)
         acc.updated(concept, newValue)
     }
 
   private def `R+⨅b-left`(newNegativeConjunctions: Iterable[Conjunction], reasoner: ReasonerState): ReasonerState = {
     val newSubclassesAndConjunctions = for {
       conjunction <- newNegativeConjunctions
-      cs <- reasoner.closureSubsBySuperclass.get(conjunction.left).toIterable
+      cs <- reasoner.closureSubsBySuperclass.get(conjunction.right).toIterable
       c <- cs
     } yield c -> conjunction
-    val newIndex = mergeConjunctionIndexes(reasoner.conjunctionsBySubclassesOfLeftOperand, newSubclassesAndConjunctions)
-    `R+⨅left`(newSubclassesAndConjunctions, reasoner.copy(conjunctionsBySubclassesOfLeftOperand = newIndex))
+    val newIndex = mergeConjunctionIndexes(reasoner.conjunctionsBySubclassesOfRightOperand, newSubclassesAndConjunctions)
+    `R+⨅left`(newSubclassesAndConjunctions, reasoner.copy(conjunctionsBySubclassesOfRightOperand = newIndex))
   }
 
   private def `R+⨅b-right`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = { //SLOW
     val newSubclassesAndConjunctions = for {
-      conjunctions <- reasoner.assertedNegConjsByOperandLeft.get(ci.superclass).toIterable
+      conjunctions <- reasoner.assertedNegConjsByOperandRight.get(ci.superclass).toIterable
       conjunction <- conjunctions
     } yield ci.subclass -> conjunction
-    val newIndex = mergeConjunctionIndexes(reasoner.conjunctionsBySubclassesOfLeftOperand, newSubclassesAndConjunctions)
-    `R+⨅left`(newSubclassesAndConjunctions, reasoner.copy(conjunctionsBySubclassesOfLeftOperand = newIndex))
+    val newIndex = mergeConjunctionIndexes(reasoner.conjunctionsBySubclassesOfRightOperand, newSubclassesAndConjunctions)
+    `R+⨅left`(newSubclassesAndConjunctions, reasoner.copy(conjunctionsBySubclassesOfRightOperand = newIndex))
   }
 
   private def `R+⨅left`(subclassesAndConjunctions: Iterable[(Concept, Conjunction)], reasoner: ReasonerState): ReasonerState = {
     var todo = reasoner.todo
     for {
       (c, conjunction) <- subclassesAndConjunctions
-      subclasses <- reasoner.closureSubsBySuperclass.get(conjunction.right)
+      subclasses <- reasoner.closureSubsBySuperclass.get(conjunction.left)
       if subclasses(c)
     } todo = `Sub+`(ConceptInclusion(c, conjunction)) :: todo
     reasoner.copy(todo = todo)
@@ -203,8 +203,8 @@ object Reasoner {
   private def `R+⨅right`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = {
     var todo = reasoner.todo
     for {
-      conjunctionsByRight <- reasoner.conjunctionsBySubclassesOfLeftOperand.get(ci.subclass)
-      conjunctions <- conjunctionsByRight.get(ci.superclass)
+      conjunctionsByLeft <- reasoner.conjunctionsBySubclassesOfRightOperand.get(ci.subclass)
+      conjunctions <- conjunctionsByLeft.get(ci.superclass)
       conjunction <- conjunctions
     } todo = `Sub+`(ConceptInclusion(ci.subclass, conjunction)) :: todo
     reasoner.copy(todo = todo)
