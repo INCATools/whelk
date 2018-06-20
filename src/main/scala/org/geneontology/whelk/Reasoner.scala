@@ -18,7 +18,7 @@ final case class ReasonerState(
   assertedNegConjsByOperandLeft:         Map[Concept, Set[Conjunction]],
   conjunctionsBySubclassesOfLeftOperand: Map[Concept, Map[Concept, Set[Conjunction]]], // Map[subclassOfLeftOperand, Map[rightOperand, Conjunction]]
   linksBySubject:                        Map[Concept, Map[Role, Set[Concept]]],
-  linksByTarget:                         Map[Concept, List[Link]],
+  linksByTarget:                         Map[Concept, Map[Role, List[Concept]]],
   negExistsMapByConcept:                 Map[Concept, Set[ExistentialRestriction]],
   propagations:                          Map[Concept, Map[Role, List[ExistentialRestriction]]]) {
 
@@ -91,7 +91,11 @@ object Reasoner {
           val updatedTargets = targets + target
           val updatedRolesToTargets = rolesToTargets.updated(role, updatedTargets)
           val linksBySubject = reasoner.linksBySubject.updated(subject, updatedRolesToTargets)
-          val linksByTarget = reasoner.linksByTarget.updated(target, (link :: reasoner.linksByTarget.getOrElse(target, Nil)))
+          val rolesToSubjects = reasoner.linksByTarget.getOrElse(target, Map.empty)
+          val subjects = rolesToSubjects.getOrElse(role, Nil)
+          val updatedSubjects = subject :: subjects
+          val updatedRolesToSubjects = rolesToSubjects.updated(role, updatedSubjects)
+          val linksByTarget = reasoner.linksByTarget.updated(target, updatedRolesToSubjects)
           `R⤳`(link, `R∘left`(link, `R∘right`(link, `R+∃right`(link, `R⊥right`(link, reasoner.copy(linksBySubject = linksBySubject, linksByTarget = linksByTarget))))))
         }
     }
@@ -126,9 +130,10 @@ object Reasoner {
   private def `R⊥left`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = {
     var todo = reasoner.todo
     if (ci.superclass == Bottom) {
-      reasoner.linksByTarget.getOrElse(ci.subclass, Nil).foreach { link =>
-        todo = todo.enqueue(ConceptInclusion(link.subject, Bottom))
-      }
+      for {
+        (role, subjects) <- reasoner.linksByTarget.getOrElse(ci.subclass, Map.empty)
+        subject <- subjects
+      } todo = todo.enqueue(ConceptInclusion(subject, Bottom))
       reasoner.copy(todo = todo)
     } else reasoner
   }
@@ -252,10 +257,10 @@ object Reasoner {
     var todo = reasoner.todo
     for {
       (concept, er) <- newPropagations
-      links <- reasoner.linksByTarget.get(concept)
-      link <- links
-      if reasoner.hier(link.role)(er.role)
-    } todo = todo.enqueue(`Sub+`(ConceptInclusion(link.subject, er)))
+      (role, subjects) <- reasoner.linksByTarget.getOrElse(concept, Map.empty)
+      if reasoner.hier(role)(er.role)
+      subject <- subjects
+    } todo = todo.enqueue(`Sub+`(ConceptInclusion(subject, er)))
     reasoner.copy(todo = todo)
   }
 
@@ -273,10 +278,11 @@ object Reasoner {
   private def `R∘left`(link: Link, reasoner: ReasonerState): ReasonerState = {
     var todo = reasoner.todo
     for {
-      Link(e, r1, c) <- reasoner.linksByTarget.getOrElse(link.subject, Nil)
+      (r1, es) <- reasoner.linksByTarget.getOrElse(link.subject, Map.empty)
       r1s <- reasoner.hierComps.get(r1)
       ss <- r1s.get(link.role)
       s <- ss
+      e <- es
     } todo = todo.enqueue(Link(e, s, link.target))
     reasoner.copy(todo = todo)
   }

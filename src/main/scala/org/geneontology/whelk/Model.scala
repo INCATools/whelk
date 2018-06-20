@@ -68,8 +68,6 @@ sealed trait Axiom {
 
 final case class ConceptInclusion(subclass: Concept, superclass: Concept) extends Axiom with QueueExpression {
 
-  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
-
   def signature: Set[Entity] = subclass.signature ++ superclass.signature
 
 }
@@ -98,10 +96,6 @@ final case class RoleAssertion(role: Role, subject: Individual, target: Individu
 
 }
 
-final case class Link(subject: Concept, role: Role, target: Concept) extends QueueExpression {
-
-  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
-
-}
+final case class Link(subject: Concept, role: Role, target: Concept) extends QueueExpression
 
 final case class `Sub+`(ci: ConceptInclusion) extends QueueExpression
