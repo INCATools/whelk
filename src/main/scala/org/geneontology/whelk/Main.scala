@@ -23,13 +23,17 @@ object Main extends App {
   val dumpStart = System.currentTimeMillis
 
   val buffer = Pickle.intoBytes(done)
-  val channel = new FileOutputStream(new File(args(1)), false).getChannel
+  val fos = new FileOutputStream(new File(args(1)), false)
+  val channel = fos.getChannel
   channel.write(buffer)
   channel.close()
+  fos.close()
 
   val dumpStop = System.currentTimeMillis
   println(s"Dumped closure in ${dumpStop - dumpStart} ms")
 
+  val unpickleStart = System.currentTimeMillis
+  
   val fis = new FileInputStream(args(1))
   val inChannel = fis.getChannel
   val size = inChannel.size
@@ -39,6 +43,10 @@ object Main extends App {
   val unpickledReasoner = Unpickle[ReasonerState].fromBytes(inBuffer)
   inChannel.close()
   fis.close()
+  
+  val unpickleStop = System.currentTimeMillis
+  println(s"Unpickled closure in ${unpickleStop - unpickleStart} ms")
+  
   println(s"Are they the same? ${done == unpickledReasoner}")
 
 }
