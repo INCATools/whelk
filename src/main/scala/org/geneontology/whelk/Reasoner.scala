@@ -3,7 +3,6 @@ package org.geneontology.whelk
 import BuiltIn._
 import scalaz._
 import scalaz.Scalaz._
-import upickle.default._
 
 final case class ReasonerState(
   hier:                                   Map[Role, Set[Role]], // initial
@@ -33,8 +32,6 @@ final case class ReasonerState(
 object ReasonerState {
 
   val empty: ReasonerState = ReasonerState(Map.empty, Map.empty, Nil, Nil, false, Set.empty, Map.empty, Map.empty, Map.empty, Set.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty)
-  
-  implicit def rw: ReadWriter[ReasonerState] = macroRW
 
 }
 

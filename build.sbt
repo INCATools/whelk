@@ -32,7 +32,7 @@ libraryDependencies ++= {
     "com.typesafe.scala-logging"  %% "scala-logging"          % "3.9.0",
     "ch.qos.logback"              %  "logback-classic"        % "1.2.3",
     "org.codehaus.groovy"         %  "groovy-all"             % "2.4.6",
-    "com.lihaoyi"                 %% "upickle"                % "0.6.6",
+    "io.suzaku"                   %% "boopickle"              % "1.3.0",
     "org.semanticweb.elk"         %  "elk-owlapi"             % "0.4.3", // % Test,
   )
 }

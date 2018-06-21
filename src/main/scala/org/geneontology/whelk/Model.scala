@@ -1,26 +1,12 @@
 package org.geneontology.whelk
 
-import upickle.default._
-
 sealed trait QueueExpression
-
-object QueueExpression {
-
-  implicit def rw: ReadWriter[QueueExpression] = macroRW
-
-}
 
 sealed trait Entity
 
 final case class Role(id: String) extends Entity {
 
   override val hashCode = scala.util.hashing.MurmurHash3.productHash(this)
-
-}
-
-object Role {
-
-  implicit def rw: ReadWriter[Role] = macroRW
 
 }
 
@@ -32,12 +18,6 @@ sealed trait Concept extends QueueExpression {
 
 }
 
-object Concept {
-
-  implicit def rw: ReadWriter[Concept] = ReadWriter.merge(AtomicConcept.rw, Conjunction.rw, ExistentialRestriction.rw)
-
-}
-
 final case class AtomicConcept(id: String) extends Concept with Entity {
 
   def conceptSignature: Set[Concept] = Set(this)
@@ -45,12 +25,6 @@ final case class AtomicConcept(id: String) extends Concept with Entity {
   def signature: Set[Entity] = Set(this)
 
   override val hashCode = scala.util.hashing.MurmurHash3.productHash(this)
-
-}
-
-object AtomicConcept {
-
-  implicit def rw: ReadWriter[AtomicConcept] = macroRW
 
 }
 
@@ -74,12 +48,6 @@ final case class Conjunction(left: Concept, right: Concept) extends Concept {
 
 }
 
-object Conjunction {
-
-  implicit def rw: ReadWriter[Conjunction] = macroRW
-
-}
-
 final case class ExistentialRestriction(role: Role, concept: Concept) extends Concept {
 
   def conceptSignature: Set[Concept] = concept.conceptSignature + this
@@ -87,12 +55,6 @@ final case class ExistentialRestriction(role: Role, concept: Concept) extends Co
   def signature: Set[Entity] = concept.signature + role
 
   override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
-
-}
-
-object ExistentialRestriction {
-
-  implicit def rw: ReadWriter[ExistentialRestriction] = macroRW
 
 }
 
@@ -107,12 +69,6 @@ sealed trait Axiom {
 final case class ConceptInclusion(subclass: Concept, superclass: Concept) extends Axiom with QueueExpression {
 
   def signature: Set[Entity] = subclass.signature ++ superclass.signature
-
-}
-
-object ConceptInclusion {
-
-  implicit def rw: ReadWriter[ConceptInclusion] = macroRW
 
 }
 
@@ -142,16 +98,4 @@ final case class RoleAssertion(role: Role, subject: Individual, target: Individu
 
 final case class Link(subject: Concept, role: Role, target: Concept) extends QueueExpression
 
-object Link {
-
-  implicit def rw: ReadWriter[Link] = macroRW
-
-}
-
 final case class `Sub+`(ci: ConceptInclusion) extends QueueExpression
-
-object `Sub+` {
-
-  implicit def rw: ReadWriter[`Sub+`] = macroRW
-
-}

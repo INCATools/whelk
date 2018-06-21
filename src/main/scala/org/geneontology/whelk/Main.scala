@@ -1,18 +1,14 @@
 package org.geneontology.whelk
 
 import java.io.File
+import java.io.FileOutputStream
+import java.io.FileInputStream
 
-import scala.collection.JavaConverters._
-
-import org.phenoscape.scowl._
 import org.semanticweb.owlapi.apibinding.OWLManager
 import org.semanticweb.owlapi.model.IRI
 
-import upickle.default._
-
-import BuiltIn.Bottom
-import java.io.FileWriter
-import java.io.BufferedWriter
+import boopickle.Default._
+import java.nio.ByteBuffer
 
 object Main extends App {
 
@@ -26,11 +22,23 @@ object Main extends App {
 
   val dumpStart = System.currentTimeMillis
 
-  val writer = new BufferedWriter(new FileWriter(new File(args(1))))
-  writeTo(done, writer)
-  writer.close()
+  val buffer = Pickle.intoBytes(done)
+  val channel = new FileOutputStream(new File(args(1)), false).getChannel
+  channel.write(buffer)
+  channel.close()
 
   val dumpStop = System.currentTimeMillis
   println(s"Dumped closure in ${dumpStop - dumpStart} ms")
+
+  val fis = new FileInputStream(args(1))
+  val inChannel = fis.getChannel
+  val size = inChannel.size
+  val inBuffer = ByteBuffer.allocate(size.toInt)
+  inChannel.read(inBuffer)
+  inBuffer.rewind()
+  val unpickledReasoner = Unpickle[ReasonerState].fromBytes(inBuffer)
+  inChannel.close()
+  fis.close()
+  println(s"Are they the same? ${done == unpickledReasoner}")
 
 }
