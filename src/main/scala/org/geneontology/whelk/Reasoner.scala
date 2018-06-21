@@ -13,6 +13,7 @@ final case class ReasonerState(
   inits:                                  Set[Concept], // closure
   assertedConceptInclusionsBySubclass:    Map[Concept, List[ConceptInclusion]],
   closureSubsBySuperclass:                Map[Concept, Set[Concept]],
+  closureSubsBySubclass:                  Map[Concept, Set[Concept]],
   assertedNegConjs:                       Set[Conjunction],
   assertedNegConjsByOperandRight:         Map[Concept, List[Conjunction]],
   conjunctionsBySubclassesOfRightOperand: Map[Concept, Map[Concept, Set[Conjunction]]], // Map[subclassOfRightOperand, Map[leftOperand, Conjunction]]
@@ -30,7 +31,7 @@ final case class ReasonerState(
 
 object ReasonerState {
 
-  val empty: ReasonerState = ReasonerState(Map.empty, Map.empty, Nil, Nil, false, Set.empty, Map.empty, Map.empty, Set.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty)
+  val empty: ReasonerState = ReasonerState(Map.empty, Map.empty, Nil, Nil, false, Set.empty, Map.empty, Map.empty, Map.empty, Set.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty)
 
 }
 
@@ -75,13 +76,17 @@ object Reasoner {
         val subs = reasoner.closureSubsBySuperclass.getOrElse(superclass, Set.empty)
         if (subs(subclass)) reasoner else {
           val closureSubsBySuperclass = reasoner.closureSubsBySuperclass.updated(superclass, (subs + subclass))
-          `R⊑right`(ci, `R+∃b-right`(ci, `R-∃`(ci, `R+⨅b-right`(ci, `R+⨅right`(ci, `R-⨅`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass))))))))
+          val supers = reasoner.closureSubsBySubclass.getOrElse(subclass, Set.empty)
+          val closureSubsBySubclass = reasoner.closureSubsBySubclass.updated(subclass, (supers + superclass))
+          `R⊑right`(ci, `R+∃b-right`(ci, `R-∃`(ci, `R+⨅b-right`(ci, `R+⨅right`(ci, `R-⨅`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass, closureSubsBySubclass = closureSubsBySubclass))))))))
         }
       case `Sub+`(ci @ ConceptInclusion(subclass, superclass)) =>
         val subs = reasoner.closureSubsBySuperclass.getOrElse(superclass, Set.empty)
         if (subs(subclass)) reasoner else {
           val closureSubsBySuperclass = reasoner.closureSubsBySuperclass.updated(superclass, (subs + subclass))
-          `R⊑right`(ci, `R+∃b-right`(ci, `R+⨅b-right`(ci, `R+⨅right`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass))))))
+          val supers = reasoner.closureSubsBySubclass.getOrElse(subclass, Set.empty)
+          val closureSubsBySubclass = reasoner.closureSubsBySubclass.updated(subclass, (supers + superclass))
+          `R⊑right`(ci, `R+∃b-right`(ci, `R+⨅b-right`(ci, `R+⨅right`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass, closureSubsBySubclass = closureSubsBySubclass))))))
         }
       case link @ Link(subject, role, target) =>
         val rolesToTargets = reasoner.linksBySubject.getOrElse(subject, Map.empty)
