@@ -14,10 +14,13 @@ import BuiltIn.Bottom
 object Test extends App {
 
   //val reasoner = Reasoner.prepare(Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create("http://purl.obolibrary.org/obo/pato.owl"))))
-  val ontology = OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File("uberon-trimmed.ofn")))
+  val ontology = OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File("../../Source/obo-asserted/go.owl")))
   val uberonAxioms = Bridge.ontologyToAxioms(ontology)
   //val goAxioms = Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File("../../Source/obo-asserted/go.owl"))))
   //val reasoner = Reasoner.prepare(Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File("skeletons.ofn")))))
+  val gocam = OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File("586fc17a00001662.ofn")))
+  val gocamAxioms = Bridge.ontologyToAxioms(gocam).collect { case ci: ConceptInclusion => ci }
+  println(s"GO-CAM size: ${gocamAxioms.size}")
   println("Start")
   val start = System.currentTimeMillis
   val done = Reasoner.assert(uberonAxioms)
@@ -34,17 +37,20 @@ object Test extends App {
     AtomicConcept("http://example.org/muscle_of_head"))
   val queryStart = System.currentTimeMillis
   val newDone = Reasoner.assert(Set(query), done)
+  //val newDone = Reasoner.assert(gocamAxioms, done)
   val queryStop = System.currentTimeMillis
   println(s"Classified query in ${queryStop - queryStart} ms")
-  val subclasses = newDone.subs.filter(_.superclass == AtomicConcept("http://example.org/muscle_of_head")).map(_.subclass).collect { case x: AtomicConcept => x }
+  //val subclasses = newDone.subs.filter(_.superclass == AtomicConcept("http://example.org/muscle_of_head")).map(_.subclass).collect { case x: AtomicConcept => x }
   //subclasses.foreach(println)
 
   //done.subs.collect { case (ci @ ConceptInclusion(AtomicConcept(_), AtomicConcept(_))) => ci }.foreach(println)
   //println(done.concIncs.size)
   //println(done.subs.size - reasoner.concIncs.size)
-  println(done.subs.size)
+  
+  val doneSubs = done.subs
+  println(doneSubs.size)
   //done.subs.foreach(println)
-  val named = done.subs.filter {
+  val named = doneSubs.filter {
     case ConceptInclusion(sub: AtomicConcept, sup: AtomicConcept) if (sub != sup && sub != Bottom) => true
     case _ => false
   }

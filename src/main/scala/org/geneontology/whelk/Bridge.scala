@@ -22,15 +22,18 @@ object Bridge {
     case EquivalentClasses(_, operands) =>
       val converted = operands.map(convertExpression).toList.collect { case Some(concept) => concept }
       converted.combinations(2).flatMap {
-        case first :: second :: Nil =>
-          Set(ConceptInclusion(first, second), ConceptInclusion(second, first))
+        case first :: second :: Nil => Set(ConceptInclusion(first, second), ConceptInclusion(second, first))
+        case _                      => ??? //impossible
       }.toSet
     case DisjointClasses(_, operands) if operands.size == 2 => //FIXME handle >2
       val converted = operands.map(convertExpression).toList.collect { case Some(concept) => concept }
       converted.combinations(2).flatMap {
-        case first :: second :: Nil =>
-          Set(ConceptInclusion(Conjunction(first, second), Bottom))
+        case first :: second :: Nil => Set(ConceptInclusion(Conjunction(first, second), Bottom))
+        case _                      => ??? //impossible
       }.toSet
+    case ClassAssertion(_, cls, NamedIndividual(iri)) => convertExpression(cls).map(concept => ConceptInclusion(AtomicConcept(iri.toString), concept)).toSet
+    //FIXME these translations of Abox axioms will go wrong if there is punning
+    case ObjectPropertyAssertion(_, ObjectProperty(prop), NamedIndividual(subj), NamedIndividual(obj)) => Set(ConceptInclusion(AtomicConcept(subj.toString), ExistentialRestriction(Role(prop.toString), AtomicConcept(obj.toString))))
     case SubObjectPropertyOf(_, ObjectProperty(subproperty), ObjectProperty(superproperty)) =>
       Set(RoleInclusion(Role(subproperty.toString), Role(superproperty.toString)))
     case SubObjectPropertyChainOf(_, ObjectProperty(first) :: ObjectProperty(second) :: Nil, ObjectProperty(superproperty)) => //FIXME handle >2
