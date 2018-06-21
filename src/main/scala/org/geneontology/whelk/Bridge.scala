@@ -45,24 +45,29 @@ object Bridge {
       Set.empty
   }
 
-  def convertExpression(expression: OWLClassExpression): Option[Concept] = expression match {
-    case OWLThing => Some(Top)
-    case OWLNothing => Some(Bottom)
-    case Class(iri) => Some(AtomicConcept(iri.toString))
-    case ObjectSomeValuesFrom(ObjectProperty(prop), filler) => convertExpression(filler).map(ExistentialRestriction(Role(prop.toString), _))
-    case ObjectIntersectionOf(operands) if operands.size >= 2 => //FIXME convert >2 to binary
-      def convert(items: List[Concept]): Concept = items match {
-        case first :: second :: Nil  => Conjunction(first, second)
-        case first :: second :: rest => Conjunction(first, convert(second :: rest))
-        case first :: Nil            => first
-      }
-      val converted = operands.toList.map(convertExpression)
-      if (converted.forall(_.nonEmpty))
-        Some(convert(converted.collect { case Some(operand) => operand }))
-      else None
-    case other =>
-      //println(s"Not supported: $other")
-      None
+  def convertExpression(expression: OWLClassExpression): Option[Concept] = {
+    import scalaz._
+    import Scalaz._
+    import org.geneontology.whelk.Disjunction
+    expression match {
+      case OWLThing => Some(Top)
+      case OWLNothing => Some(Bottom)
+      case Class(iri) => Some(AtomicConcept(iri.toString))
+      case ObjectSomeValuesFrom(ObjectProperty(prop), filler) => convertExpression(filler).map(ExistentialRestriction(Role(prop.toString), _))
+      case ObjectIntersectionOf(operands) if operands.size >= 2 =>
+        def convert(items: List[Concept]): Concept = items match {
+          case first :: second :: Nil  => Conjunction(first, second)
+          case first :: second :: rest => Conjunction(first, convert(second :: rest))
+          case first :: Nil            => first
+        }
+        operands.toList.map(convertExpression).sequence.map(convert)
+      case ObjectUnionOf(operands) =>
+        operands.toList.map(convertExpression).sequence.map(_.toSet).map(Disjunction(_))
+      case ObjectComplementOf(concept) => convertExpression(concept).map(Complement(_))
+      case other =>
+        //println(s"Not supported: $other")
+        None
+    }
   }
 
 }

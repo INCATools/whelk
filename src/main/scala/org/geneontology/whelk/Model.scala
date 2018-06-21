@@ -48,11 +48,31 @@ final case class Conjunction(left: Concept, right: Concept) extends Concept {
 
 }
 
+final case class Disjunction(operands: Set[Concept]) extends Concept {
+
+  def conceptSignature: Set[Concept] = operands.flatMap(_.conceptSignature) + this
+
+  def signature: Set[Entity] = operands.flatMap(_.signature)
+
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
+
+}
+
 final case class ExistentialRestriction(role: Role, concept: Concept) extends Concept {
 
   def conceptSignature: Set[Concept] = concept.conceptSignature + this
 
   def signature: Set[Entity] = concept.signature + role
+
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
+
+}
+
+final case class Complement(concept: Concept) extends Concept {
+
+  def conceptSignature: Set[Concept] = concept.conceptSignature + this
+
+  def signature: Set[Entity] = concept.signature
 
   override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
 

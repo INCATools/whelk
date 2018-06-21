@@ -48,9 +48,17 @@ object Reasoner {
   }
 
   def assert(axioms: Set[ConceptInclusion], reasoner: ReasonerState): ReasonerState = {
+    val distinctConcepts = axioms.flatMap {
+      case ConceptInclusion(subclass, superclass) => Set(subclass, superclass)
+    }.flatMap(_.conceptSignature)
+    val additionalAxioms = distinctConcepts.flatMap {
+      case d @ Disjunction(_) => `R⊔`(d)
+      case c @ Complement(_)  => `R¬`(c)
+      case _                  => Set.empty[ConceptInclusion]
+    }
     computeClosure(reasoner.copy(
       assertions = reasoner.assertions ::: axioms.toList,
-      todo = reasoner.todo ::: axioms.toList))
+      todo = reasoner.todo ::: additionalAxioms.toList ::: axioms.toList))
   }
 
   private def computeClosure(reasoner: ReasonerState): ReasonerState = {
@@ -302,6 +310,10 @@ object Reasoner {
   }
 
   private def `R⤳`(link: Link, reasoner: ReasonerState): ReasonerState = reasoner.copy(todo = link.target :: reasoner.todo)
+
+  private def `R⊔`(d: Disjunction): Set[ConceptInclusion] = d.operands.map(o => ConceptInclusion(o, d))
+
+  private def `R¬`(c: Complement): Set[ConceptInclusion] = Set(ConceptInclusion(Conjunction(c.concept, c), Bottom))
 
   private def saturateRoles(roleInclusions: Set[RoleInclusion]): Map[Role, Set[Role]] = { //FIXME can do this better?
     val subToSuper = roleInclusions.groupBy(_.subproperty).map { case (sub, ri) => sub -> ri.map(_.superproperty) }

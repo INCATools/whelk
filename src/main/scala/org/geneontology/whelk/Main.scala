@@ -22,6 +22,9 @@ object Main extends App {
 
   val dumpStart = System.currentTimeMillis
 
+  // this is needed to help the macro for some reason
+  implicit val pickler: Pickler[Disjunction] = generatePickler[Disjunction]
+  
   val buffer = Pickle.intoBytes(done)
   val fos = new FileOutputStream(new File(args(1)), false)
   val channel = fos.getChannel
