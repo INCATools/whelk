@@ -31,7 +31,8 @@ object Bridge {
         case first :: second :: Nil => Set(ConceptInclusion(Conjunction(first, second), Bottom))
         case _                      => ??? //impossible
       }.toSet
-    case ClassAssertion(_, cls, NamedIndividual(iri)) => convertExpression(cls).map(concept => ConceptInclusion(AtomicConcept(iri.toString), concept)).toSet
+    case ClassAssertion(_, cls, NamedIndividual(iri)) => convertExpression(cls).map(concept =>
+      ConceptInclusion(AtomicConcept(iri.toString), concept)).toSet
     //FIXME these translations of Abox axioms will go wrong if there is punning
     case ObjectPropertyAssertion(_, ObjectProperty(prop), NamedIndividual(subj), NamedIndividual(obj)) => Set(ConceptInclusion(AtomicConcept(subj.toString), ExistentialRestriction(Role(prop.toString), AtomicConcept(obj.toString))))
     case SubObjectPropertyOf(_, ObjectProperty(subproperty), ObjectProperty(superproperty)) =>
@@ -40,6 +41,9 @@ object Bridge {
       Set(RoleComposition(Role(first.toString), Role(second.toString), Role(superproperty.toString)))
     case TransitiveObjectProperty(_, ObjectProperty(property)) =>
       Set(RoleComposition(Role(property.toString), Role(property.toString), Role(property.toString)))
+    case ObjectPropertyDomain(_, ObjectProperty(property), ce) => convertExpression(ce).map(concept =>
+      //TODO Is there a faster way to implement Domain?
+      ConceptInclusion(ExistentialRestriction(Role(property.toString), Top), concept)).toSet
     case other =>
       //println(s"Not supported: $other")
       Set.empty
