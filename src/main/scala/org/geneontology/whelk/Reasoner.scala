@@ -184,7 +184,7 @@ object Reasoner {
       val conjunctionsByLeft = conjunctionsBySubclassesOfRightOperand.getOrElse(c, Map.empty)
       val newConjunctionsForThisLeft = conjunctionsByLeft.getOrElse(conjunction.left, Set.empty) + conjunction
       val newValue = conjunctionsByLeft.updated(conjunction.left, newConjunctionsForThisLeft)
-      conjunctionsBySubclassesOfRightOperand.updated(c, newValue)
+      conjunctionsBySubclassesOfRightOperand = conjunctionsBySubclassesOfRightOperand.updated(c, newValue)
     }
     `R+⨅left`(newSubclassesAndConjunctions, reasoner.copy(conjunctionsBySubclassesOfRightOperand = conjunctionsBySubclassesOfRightOperand))
   }
@@ -200,7 +200,7 @@ object Reasoner {
       val conjunctionsByLeft = conjunctionsBySubclassesOfRightOperand.getOrElse(ci.subclass, Map.empty)
       val newConjunctionsForThisLeft = conjunctionsByLeft.getOrElse(conjunction.left, Set.empty) + conjunction
       val newValue = conjunctionsByLeft.updated(conjunction.left, newConjunctionsForThisLeft)
-      conjunctionsBySubclassesOfRightOperand.updated(ci.subclass, newValue)
+      conjunctionsBySubclassesOfRightOperand = conjunctionsBySubclassesOfRightOperand.updated(ci.subclass, newValue)
     }
     `R+⨅left`(newSubclassesAndConjunctions, reasoner.copy(conjunctionsBySubclassesOfRightOperand = conjunctionsBySubclassesOfRightOperand))
   }
