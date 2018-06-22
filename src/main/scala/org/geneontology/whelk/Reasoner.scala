@@ -31,7 +31,7 @@ final case class ReasonerState(
 
 object ReasonerState {
 
-  val empty: ReasonerState = ReasonerState(Map.empty, Map.empty, Nil, Nil, false, Set.empty, Map.empty, Map.empty, Map.empty, Set.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty)
+  val empty: ReasonerState = ReasonerState(Map.empty, Map.empty, Nil, Nil, false, Set.empty, Map.empty, Map(Bottom -> Set.empty), Map.empty, Set.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty)
 
 }
 
@@ -152,7 +152,7 @@ object Reasoner {
   }
 
   private def `R⊥right`(link: Link, reasoner: ReasonerState): ReasonerState = {
-    if (reasoner.closureSubsBySuperclass.getOrElse(Bottom, Set.empty)(link.target))
+    if (reasoner.closureSubsBySuperclass(Bottom)(link.target))
       reasoner.copy(todo = ConceptInclusion(link.subject, Bottom) :: reasoner.todo)
     else reasoner
   }
