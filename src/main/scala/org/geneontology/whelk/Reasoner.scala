@@ -56,9 +56,10 @@ object Reasoner {
       case c @ Complement(_)  => `R¬`(c)
       case _                  => Set.empty[ConceptInclusion]
     }
+    val updatedAssertions = additionalAxioms.toList ::: axioms.toList
     computeClosure(reasoner.copy(
-      assertions = reasoner.assertions ::: axioms.toList,
-      todo = reasoner.todo ::: additionalAxioms.toList ::: axioms.toList))
+      assertions = reasoner.assertions ::: updatedAssertions,
+      todo = reasoner.todo ::: updatedAssertions))
   }
 
   private def computeClosure(reasoner: ReasonerState): ReasonerState = {
