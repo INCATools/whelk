@@ -27,6 +27,11 @@ final case class ReasonerState(
       subclasses.map(ConceptInclusion(_, superclass))
   }.toSet
 
+  def classAssertions: Set[ConceptAssertion] = (for {
+    (Nominal(ind), superclasses) <- closureSubsBySubclass
+    a @ AtomicConcept(_) <- superclasses
+  } yield ConceptAssertion(a, ind)).toSet
+
 }
 
 object ReasonerState {

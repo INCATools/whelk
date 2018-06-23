@@ -86,6 +86,16 @@ sealed trait Axiom {
 
 }
 
+final case class Nominal(individual: Individual) extends Concept {
+
+  def conceptSignature: Set[Concept] = Set(this)
+
+  def signature: Set[Entity] = Set(individual)
+
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
+
+}
+
 final case class ConceptInclusion(subclass: Concept, superclass: Concept) extends Axiom with QueueExpression {
 
   def signature: Set[Entity] = subclass.signature ++ superclass.signature

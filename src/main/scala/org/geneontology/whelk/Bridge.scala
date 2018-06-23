@@ -32,9 +32,11 @@ object Bridge {
         case _                      => ??? //impossible
       }.toSet
     case ClassAssertion(_, cls, NamedIndividual(iri)) => convertExpression(cls).map(concept =>
-      ConceptInclusion(AtomicConcept(iri.toString), concept)).toSet
-    //FIXME these translations of Abox axioms will go wrong if there is punning
-    case ObjectPropertyAssertion(_, ObjectProperty(prop), NamedIndividual(subj), NamedIndividual(obj)) => Set(ConceptInclusion(AtomicConcept(subj.toString), ExistentialRestriction(Role(prop.toString), AtomicConcept(obj.toString))))
+      ConceptInclusion(Nominal(Individual(iri.toString)), concept)).toSet
+    case ObjectPropertyAssertion(_, ObjectProperty(prop), NamedIndividual(subj), NamedIndividual(obj)) =>
+      Set(ConceptInclusion(Nominal(Individual(subj.toString)), ExistentialRestriction(Role(prop.toString), Nominal(Individual(obj.toString)))))
+    case ObjectPropertyAssertion(_, ObjectInverseOf(ObjectProperty(prop)), NamedIndividual(obj), NamedIndividual(subj)) =>
+      Set(ConceptInclusion(Nominal(Individual(subj.toString)), ExistentialRestriction(Role(prop.toString), Nominal(Individual(obj.toString)))))
     case SubObjectPropertyOf(_, ObjectProperty(subproperty), ObjectProperty(superproperty)) =>
       Set(RoleInclusion(Role(subproperty.toString), Role(superproperty.toString)))
     case SubObjectPropertyChainOf(_, ObjectProperty(first) :: ObjectProperty(second) :: Nil, ObjectProperty(superproperty)) => //FIXME handle >2
