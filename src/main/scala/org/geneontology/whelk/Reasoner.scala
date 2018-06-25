@@ -3,6 +3,7 @@ package org.geneontology.whelk
 import BuiltIn._
 import scalaz._
 import scalaz.Scalaz._
+import scala.annotation.tailrec
 
 final case class ReasonerState(
   hier:                                   Map[Role, Set[Role]], // initial
@@ -32,11 +33,51 @@ final case class ReasonerState(
     a @ AtomicConcept(_) <- superclasses
   } yield ConceptAssertion(a, ind)).toSet
 
+  def computeTaxonomy: Map[AtomicConcept, (Set[AtomicConcept], Set[AtomicConcept])] =
+    closureSubsBySubclass.collect {
+      case (c: AtomicConcept, subsumers) => c -> directSubsumers(c, subsumers)
+    }
+
+  def individualsDirectTypes: Map[Individual, Set[AtomicConcept]] =
+    closureSubsBySubclass.collect {
+      case (n @ Nominal(ind), subsumers) => ind -> directSubsumers(n, subsumers)._2
+    }
+
+  def directlySubsumes(concept: Concept): (Set[AtomicConcept], Set[AtomicConcept]) =
+    direct(concept, closureSubsBySuperclass.getOrElse(concept, Set.empty) + Bottom, closureSubsBySuperclass.withDefaultValue(Set.empty))
+
+  def directSubsumes(concept: Concept, allSubsConcepts: Set[Concept]): (Set[AtomicConcept], Set[AtomicConcept]) =
+    direct(concept, allSubsConcepts + Bottom, closureSubsBySuperclass.withDefaultValue(Set.empty))
+
+  def directSubsumers(concept: Concept, allSubsConcepts: Set[Concept]): (Set[AtomicConcept], Set[AtomicConcept]) =
+    direct(concept, allSubsConcepts + Top, closureSubsBySubclass.withDefaultValue(Set.empty))
+
+  def direct(concept: Concept, allSubsConcepts: Set[Concept], subsumerFunction: Concept => Concept => Boolean): (Set[AtomicConcept], Set[AtomicConcept]) = {
+    val allSubsumers = allSubsConcepts.iterator.collect { case ac: AtomicConcept => ac }.filterNot(_ == concept)
+    allSubsumers.foldLeft((Set.empty[AtomicConcept], Set.empty[AtomicConcept])) {
+      case ((equivalents, directSubsumers), subsumer) =>
+        if (subsumerFunction(subsumer)(concept)) (equivalents + subsumer, directSubsumers)
+        else {
+          @tailrec
+          def loop(currentDirectSubs: List[AtomicConcept], isDirect: Boolean, remove: List[AtomicConcept], add: List[AtomicConcept]): (List[AtomicConcept], List[AtomicConcept]) =
+            (currentDirectSubs, isDirect, remove, add) match {
+              case (Nil, true, remove, add) => (remove, subsumer :: add)
+              case (Nil, false, remove, add) => (remove, add)
+              case (other :: rest, isDirect, remove, add) if subsumerFunction(other)(subsumer) => (remove, add)
+              case (other :: rest, isDirect, remove, add) if subsumerFunction(subsumer)(other) => loop(rest, isDirect, other :: remove, add)
+              case (other :: rest, isDirect, remove, add) => loop(rest, isDirect, remove, add)
+            }
+          val (remove, add) = loop(directSubsumers.toList, true, Nil, Nil)
+          (equivalents, (directSubsumers -- remove) ++ add)
+        }
+    }
+  }
+
 }
 
 object ReasonerState {
 
-  val empty: ReasonerState = ReasonerState(Map.empty, Map.empty, Nil, Nil, false, Set.empty, Map.empty, Map(Bottom -> Set.empty), Map.empty, Set.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty)
+  val empty: ReasonerState = ReasonerState(Map.empty, Map.empty, Nil, Nil, false, Set.empty, Map.empty, Map(Bottom -> Set.empty), Map(Top -> Set.empty), Set.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty)
 
 }
 
@@ -67,6 +108,7 @@ object Reasoner {
       todo = reasoner.todo ::: updatedAssertions))
   }
 
+  @tailrec
   private def computeClosure(reasoner: ReasonerState): ReasonerState = {
     if (reasoner.assertions.nonEmpty) {
       val item :: todoAssertions = reasoner.assertions
