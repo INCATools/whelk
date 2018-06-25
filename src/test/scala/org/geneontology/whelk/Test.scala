@@ -9,23 +9,29 @@ import org.semanticweb.elk.owlapi.ElkReasonerFactory
 import org.semanticweb.owlapi.apibinding.OWLManager
 import org.semanticweb.owlapi.model.IRI
 
-import BuiltIn.Bottom
+import BuiltIn._
 
 object Test extends App {
 
+  def time[T](message: String)(operation: => T): T = {
+    val start = System.currentTimeMillis
+    val completed = operation
+    val stop = System.currentTimeMillis
+    println(s"$message: ${stop - start} ms")
+    completed
+  }
+
   //val reasoner = Reasoner.prepare(Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create("http://purl.obolibrary.org/obo/pato.owl"))))
-  val ontology = OWLManager.createOWLOntologyManager().loadOntology(IRI.create("http://purl.obolibrary.org/obo/uberon/ext.owl"))
+  val ontology = OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File("uberon-go-cl-ro.ofn")))
   val uberonAxioms = Bridge.ontologyToAxioms(ontology)
   //val goAxioms = Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File("../../Source/obo-asserted/go.owl"))))
   //val reasoner = Reasoner.prepare(Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File("skeletons.ofn")))))
   val gocam = OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File("586fc17a00001662.ofn")))
   val gocamAxioms = Bridge.ontologyToAxioms(gocam).collect { case ci: ConceptInclusion => ci }
   println(s"GO-CAM size: ${gocamAxioms.size}")
+
   println("Start")
-  val start = System.currentTimeMillis
-  val done = Reasoner.assert(uberonAxioms)
-  val stop = System.currentTimeMillis
-  println(s"Reasoned in: ${stop - start} ms")
+  val done = time("Reasoned in:")(Reasoner.assert(uberonAxioms))
 
   //done.subs.foreach(println)
   println("================")
@@ -35,23 +41,36 @@ object Test extends App {
       AtomicConcept("http://purl.obolibrary.org/obo/UBERON_0001630"),
       ExistentialRestriction(Role("http://purl.obolibrary.org/obo/BFO_0000050"), AtomicConcept("http://purl.obolibrary.org/obo/UBERON_0000033"))),
     AtomicConcept("http://example.org/muscle_of_head"))
-  val queryStart = System.currentTimeMillis
-  val newDone = Reasoner.assert(Set(query), done)
-  //val newDone = Reasoner.assert(gocamAxioms, done)
-  val queryStop = System.currentTimeMillis
-  println(s"Classified query in ${queryStop - queryStart} ms")
+
+  val newDone = time("Classified query in")(Reasoner.assert(gocamAxioms, done))
+  newDone.classAssertions.foreach(println)
+  println
+
+  val RegeneratingLimbFin = AtomicConcept("http://purl.obolibrary.org/obo/UBERON_2001269")
+  val PectoralFin = AtomicConcept("http://purl.obolibrary.org/obo/UBERON_0000151")
+  val CHEBIterm = AtomicConcept("http://purl.obolibrary.org/obo/CHEBI_33699")
+
+  val taxonomy = time("Computed taxonomy in")(done.computeTaxonomy)
+
+  println(taxonomy(RegeneratingLimbFin))
+  println(taxonomy(PectoralFin))
+  println(taxonomy(CHEBIterm))
+
+  val indTypes = time("Computed direct types for individuals in")(newDone.individualsDirectTypes)
+  indTypes.foreach(println)
+
   //val subclasses = newDone.subs.filter(_.superclass == AtomicConcept("http://example.org/muscle_of_head")).map(_.subclass).collect { case x: AtomicConcept => x }
   //subclasses.foreach(println)
 
   //done.subs.collect { case (ci @ ConceptInclusion(AtomicConcept(_), AtomicConcept(_))) => ci }.foreach(println)
   //println(done.concIncs.size)
   //println(done.subs.size - reasoner.concIncs.size)
-  
+
   val doneSubs = done.subs
   println(doneSubs.size)
   //done.subs.foreach(println)
   val named = doneSubs.filter {
-    case ConceptInclusion(sub: AtomicConcept, sup: AtomicConcept) if (sub != sup && sub != Bottom) => true
+    case ConceptInclusion(sub: AtomicConcept, sup: AtomicConcept) if (sub != sup && sub != Bottom && sup != Top) => true
     case _ => false
   }
   println(named.size)
@@ -59,7 +78,7 @@ object Test extends App {
 
   val reasoner = new ElkReasonerFactory().createReasoner(ontology)
   val terms = uberonAxioms.collect { case ax: ConceptInclusion => ax }.flatMap(_.signature).collect { case e: AtomicConcept => e }
-  val elkConceptInclusions = terms.flatMap(t => reasoner.getSubClasses(Class(t.id), false).getFlattened.asScala.map(sub => ConceptInclusion(AtomicConcept(sub.getIRI.toString), t))).filterNot(_.subclass == Bottom)
+  val elkConceptInclusions = terms.filterNot(_ == Top).flatMap(t => reasoner.getSubClasses(Class(t.id), false).getFlattened.asScala.map(sub => ConceptInclusion(AtomicConcept(sub.getIRI.toString), t))).filterNot(_.subclass == Bottom)
   val elkConceptInclusionsCount = elkConceptInclusions.size
   println(s"ELK: $elkConceptInclusionsCount")
   reasoner.dispose()
