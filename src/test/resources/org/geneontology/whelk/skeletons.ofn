@@ -1,0 +1,54 @@
+Prefix(:=<http://www.semanticweb.org/jbalhoff/ontologies/2018/4/untitled-ontology-859#>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<http://www.semanticweb.org/jbalhoff/ontologies/2018/4/untitled-ontology-859>
+
+Declaration(Class(:finger))
+Declaration(Class(:finger_skeleton))
+Declaration(Class(:hand))
+Declaration(Class(:hand_part))
+Declaration(Class(:hand_skeleton))
+Declaration(Class(:skeleton))
+Declaration(ObjectProperty(:part_of))
+Declaration(ObjectProperty(:skeleton_of))
+############################
+#   Object Properties
+############################
+
+# Object Property: :part_of (:part_of)
+
+TransitiveObjectProperty(:part_of)
+
+# Object Property: :skeleton_of (:skeleton_of)
+
+SubObjectPropertyOf(:skeleton_of :part_of)
+
+
+############################
+#   Classes
+############################
+
+# Class: :finger (:finger)
+
+SubClassOf(:finger ObjectSomeValuesFrom(:part_of :hand))
+
+# Class: :finger_skeleton (:finger_skeleton)
+
+EquivalentClasses(:finger_skeleton ObjectIntersectionOf(:skeleton ObjectSomeValuesFrom(:skeleton_of :finger)))
+SubClassOf(:finger_skeleton ObjectSomeValuesFrom(:part_of :hand_skeleton))
+
+# Class: :hand_part (:hand_part)
+
+EquivalentClasses(:hand_part ObjectSomeValuesFrom(:part_of :hand))
+
+# Class: :hand_skeleton (:hand_skeleton)
+
+EquivalentClasses(:hand_skeleton ObjectIntersectionOf(:skeleton ObjectSomeValuesFrom(:skeleton_of :hand)))
+
+
+)

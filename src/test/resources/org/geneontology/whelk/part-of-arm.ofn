@@ -1,0 +1,52 @@
+Prefix(:=<http://example.org/uberon#>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<http://example.org/uberon>
+
+Declaration(Class(:arm))
+Declaration(Class(:finger))
+Declaration(Class(:hand))
+Declaration(Class(:part_of_arm))
+Declaration(Class(:special_arm))
+Declaration(Class(:special_hand))
+Declaration(ObjectProperty(:part_of))
+############################
+#   Object Properties
+############################
+
+# Object Property: :part_of (:part_of)
+
+TransitiveObjectProperty(:part_of)
+
+
+############################
+#   Classes
+############################
+
+# Class: :finger (:finger)
+
+SubClassOf(:finger ObjectSomeValuesFrom(:part_of :special_hand))
+
+# Class: :hand (:hand)
+
+SubClassOf(:hand ObjectSomeValuesFrom(:part_of :special_arm))
+
+# Class: :part_of_arm (:part_of_arm)
+
+EquivalentClasses(:part_of_arm ObjectSomeValuesFrom(:part_of :arm))
+
+# Class: :special_arm (:special_arm)
+
+SubClassOf(:special_arm :arm)
+
+# Class: :special_hand (:special_hand)
+
+SubClassOf(:special_hand :hand)
+
+
+)
