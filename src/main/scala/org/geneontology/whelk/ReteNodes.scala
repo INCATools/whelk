@@ -88,7 +88,8 @@ final case class Token(bindings: Map[Variable, Individual]) {
 sealed trait JoinNode[T] extends BetaNode with BetaParent {
 
   val thisPattern = spec.pattern.head
-  val parentBoundVariables = spec.pattern.drop(1).flatMap(_.variables).toSet
+  val leftParentSpec = JoinNodeSpec(spec.pattern.drop(1))
+  val parentBoundVariables = leftParentSpec.pattern.flatMap(_.variables).toSet
   val thisPatternVariables = thisPattern.variables
   val matchVariables = parentBoundVariables.intersect(thisPatternVariables)
 
@@ -115,7 +116,7 @@ sealed trait JoinNode[T] extends BetaNode with BetaParent {
 
 }
 
-final case class ConceptAtomJoinNode(atom: ConceptAtom, children: List[BetaNode], leftParent: BetaNode with BetaParent, rightParent: AlphaNode[Individual], spec: JoinNodeSpec) extends JoinNode[Individual] {
+final case class ConceptAtomJoinNode(atom: ConceptAtom, children: List[BetaNode], spec: JoinNodeSpec) extends JoinNode[Individual] {
 
   def leftActivate(token: Token, reasoner: ReasonerState): ReasonerState = {
     val alphaMem = reasoner.wm.conceptAlpha(atom.predicate)
@@ -130,7 +131,7 @@ final case class ConceptAtomJoinNode(atom: ConceptAtom, children: List[BetaNode]
   }
 
   def rightActivate(individual: Individual, reasoner: ReasonerState): ReasonerState = {
-    val parentMem = reasoner.wm.beta(leftParent.spec)
+    val parentMem = reasoner.wm.beta(leftParentSpec)
     val newTokens = atom.argument match {
       case variable: Variable => parentMem.tokenIndex.get(variable) match {
         case Some(bound) => bound.get(individual).getOrElse(Nil)
@@ -144,7 +145,7 @@ final case class ConceptAtomJoinNode(atom: ConceptAtom, children: List[BetaNode]
 
 }
 
-final case class RoleAtomJoinNode(atom: RoleAtom, children: List[BetaNode], leftParent: BetaNode with BetaParent, rightParent: AlphaNode[RoleAssertion], spec: JoinNodeSpec) extends JoinNode[RoleAssertion] {
+final case class RoleAtomJoinNode(atom: RoleAtom, children: List[BetaNode], spec: JoinNodeSpec) extends JoinNode[RoleAssertion] {
 
   private val subjectMustBeSameAsTarget = atom.subject == atom.target
 
@@ -180,7 +181,7 @@ final case class RoleAtomJoinNode(atom: RoleAtom, children: List[BetaNode], left
   def rightActivate(assertion: RoleAssertion, reasoner: ReasonerState): ReasonerState = {
     if (subjectMustBeSameAsTarget && (assertion.subject != assertion.target)) reasoner
     else {
-      val parentMem = reasoner.wm.beta(leftParent.spec)
+      val parentMem = reasoner.wm.beta(leftParentSpec)
       val (goodSubjectTokens, newSubjectBindings: Map[Variable, Individual]) = atom.subject match {
         case variable: Variable => parentMem.tokenIndex.get(variable) match {
           case Some(bound) => (bound.get(assertion.subject).getOrElse(Nil), Map.empty)
