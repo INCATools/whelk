@@ -21,7 +21,8 @@ final case class ReasonerState(
   linksBySubject:                         Map[Concept, Map[Role, Set[Concept]]],
   linksByTarget:                          Map[Concept, Map[Role, List[Concept]]],
   negExistsMapByConcept:                  Map[Concept, Set[ExistentialRestriction]],
-  propagations:                           Map[Concept, Map[Role, List[ExistentialRestriction]]]) {
+  propagations:                           Map[Concept, Map[Role, List[ExistentialRestriction]]],
+  wm:                                     WorkingMemory) {
 
   def subs: Set[ConceptInclusion] = closureSubsBySuperclass.flatMap {
     case (superclass, subclasses) =>
@@ -77,7 +78,7 @@ final case class ReasonerState(
 
 object ReasonerState {
 
-  val empty: ReasonerState = ReasonerState(Map.empty, Map.empty, Nil, Nil, false, Set.empty, Map.empty, Map(Bottom -> Set.empty), Map(Top -> Set.empty), Set.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty)
+  val empty: ReasonerState = ReasonerState(Map.empty, Map.empty, Nil, Nil, false, Set.empty, Map.empty, Map(Bottom -> Set.empty), Map(Top -> Set.empty), Set.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, WorkingMemory.empty)
 
 }
 
