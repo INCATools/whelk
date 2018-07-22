@@ -8,7 +8,7 @@ sealed trait AlphaNode[T] {
 
 }
 
-final case class ConceptAtomAlphaNode(children: List[JoinNode[Individual]], concept: Concept) extends AlphaNode[Individual] {
+final case class ConceptAtomAlphaNode(concept: Concept, children: List[JoinNode[Individual]]) extends AlphaNode[Individual] {
 
   def activate(individual: Individual, reasoner: ReasonerState): ReasonerState = {
     val wm = reasoner.wm
@@ -22,7 +22,7 @@ final case class ConceptAtomAlphaNode(children: List[JoinNode[Individual]], conc
 
 }
 
-final case class RoleAtomAlphaNode(children: List[JoinNode[RoleAssertion]], role: Role) extends AlphaNode[RoleAssertion] {
+final case class RoleAtomAlphaNode(role: Role, children: List[JoinNode[RoleAssertion]]) extends AlphaNode[RoleAssertion] {
 
   def activate(assertion: RoleAssertion, reasoner: ReasonerState): ReasonerState = {
     val wm = reasoner.wm
@@ -58,8 +58,6 @@ object JoinNodeSpec {
 
 sealed trait BetaNode {
 
-  def spec: JoinNodeSpec
-
   def leftActivate(token: Token, reasoner: ReasonerState): ReasonerState
 
 }
@@ -70,22 +68,21 @@ sealed trait BetaParent {
 
 }
 
-object BetaRoot extends BetaNode with BetaParent {
-
-  def leftActivate(token: Token, reasoner: ReasonerState): ReasonerState = reasoner
-  val spec: JoinNodeSpec = JoinNodeSpec(Nil)
-  val memory: BetaMemory = BetaMemory(Nil, Map.empty)
-  val children = Nil
-
-}
-
 final case class Token(bindings: Map[Variable, Individual]) {
 
   def extend(newBindings: Map[Variable, Individual]): Token = this.copy(bindings = bindings ++ newBindings)
 
 }
 
+object Token {
+
+  val empty: Token = Token(Map.empty)
+
+}
+
 sealed trait JoinNode[T] extends BetaNode with BetaParent {
+
+  def spec: JoinNodeSpec
 
   val thisPattern = spec.pattern.head
   val leftParentSpec = JoinNodeSpec(spec.pattern.drop(1))
@@ -206,7 +203,7 @@ final case class RoleAtomJoinNode(atom: RoleAtom, children: List[BetaNode], spec
 
 }
 
-final case class ProductionNode(rule: Rule, parent: BetaNode) extends BetaNode {
+final case class ProductionNode(rule: Rule) extends BetaNode {
 
   def leftActivate(token: Token, reasoner: ReasonerState): ReasonerState = {
     var todo = reasoner.todo
@@ -225,7 +222,5 @@ final case class ProductionNode(rule: Rule, parent: BetaNode) extends BetaNode {
     case v: Variable   => token.bindings(v)
     case i: Individual => i
   }
-
-  val spec = JoinNodeSpec.empty
 
 }
