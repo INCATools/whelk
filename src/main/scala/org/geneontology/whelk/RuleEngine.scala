@@ -9,7 +9,8 @@ final case class RuleEngine(rules: Set[Rule]) {
   def emptyMemory: WorkingMemory = WorkingMemory(
     conceptAlphaIndex.keys.map(c => c -> ConceptAlphaMemory.empty).toMap,
     roleAlphaIndex.keys.map(r => r -> RoleAlphaMemory.empty).toMap,
-    allJoinSpecs.map(s => s -> BetaMemory.empty).toMap + (JoinNodeSpec.empty -> BetaMemory(List(Token.empty), Map.empty)))
+    //making entries for all variables; can any getOrElse be removed?
+    allJoinSpecs.map(s => s -> BetaMemory(Nil, s.pattern.flatMap(_.variables).map(_ -> Map.empty[Individual, Set[Token]]).toMap)).toMap + (JoinNodeSpec.empty -> BetaMemory(List(Token.empty), Map.empty)))
 
   def processConceptAssertion(assertion: ConceptAssertion, reasoner: ReasonerState): ReasonerState =
     conceptAlphaIndex.get(assertion.concept).map(node => node.activate(assertion.individual, reasoner)).getOrElse(reasoner)

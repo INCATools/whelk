@@ -86,6 +86,8 @@ final case class Individual(id: String) extends Entity with IndividualArgument {
 
   def signature: Set[Entity] = Set(this)
 
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
+
 }
 
 sealed trait Axiom extends HasSignature
@@ -127,6 +129,8 @@ final case class ConceptAssertion(concept: Concept, individual: Individual) exte
 final case class RoleAssertion(role: Role, subject: Individual, target: Individual) extends Axiom {
 
   def signature: Set[Entity] = Set(role, subject, target)
+
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
 
 }
 

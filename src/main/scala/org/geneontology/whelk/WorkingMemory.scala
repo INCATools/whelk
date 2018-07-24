@@ -18,7 +18,7 @@ object RoleAlphaMemory {
 
 }
 
-final case class BetaMemory(tokens: List[Token], tokenIndex: Map[Variable, Map[Individual, List[Token]]])
+final case class BetaMemory(tokens: List[Token], tokenIndex: Map[Variable, Map[Individual, Set[Token]]])
 
 object BetaMemory {
 
