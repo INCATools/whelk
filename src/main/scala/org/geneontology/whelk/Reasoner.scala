@@ -97,8 +97,11 @@ object Reasoner {
     val allRoleInclusions = axioms.collect { case ri: RoleInclusion => ri }
     val hier: Map[Role, Set[Role]] = saturateRoles(allRoleInclusions) |+| allRoles.map(r => r -> Set(r)).toMap
     val hierComps = indexRoleCompositions(hier, axioms.collect { case rc: RoleComposition => rc })
-    val concIncs = axioms.collect { case ci: ConceptInclusion => ci }
     val rules = axioms.collect { case r: Rule => r } //TODO create rules from certain Whelk axioms
+    val anonymousRulePredicates = rules.flatMap(_.body.collect {
+      case ConceptAtom(concept, _) if concept.isAnonymous => ConceptInclusion(concept, Top)
+    })
+    val concIncs = axioms.collect { case ci: ConceptInclusion => ci } ++ anonymousRulePredicates
     val ruleEngine = RuleEngine(rules)
     val wm = ruleEngine.emptyMemory
     assert(concIncs, ReasonerState.empty.copy(hier = hier, hierComps = hierComps, ruleEngine = ruleEngine, wm = wm))

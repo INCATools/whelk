@@ -20,6 +20,8 @@ sealed trait Concept extends QueueExpression with HasSignature {
 
   def conceptSignature: Set[Concept]
 
+  def isAnonymous: Boolean
+
 }
 
 final case class AtomicConcept(id: String) extends Concept with Entity {
@@ -27,6 +29,8 @@ final case class AtomicConcept(id: String) extends Concept with Entity {
   def conceptSignature: Set[Concept] = Set(this)
 
   def signature: Set[Entity] = Set(this)
+
+  def isAnonymous: Boolean = false
 
   override val hashCode = scala.util.hashing.MurmurHash3.productHash(this)
 
@@ -48,6 +52,8 @@ final case class Conjunction(left: Concept, right: Concept) extends Concept {
 
   def signature: Set[Entity] = left.signature ++ right.signature
 
+  def isAnonymous: Boolean = true
+
   override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
 
 }
@@ -57,6 +63,8 @@ final case class Disjunction(operands: Set[Concept]) extends Concept {
   def conceptSignature: Set[Concept] = operands.flatMap(_.conceptSignature) + this
 
   def signature: Set[Entity] = operands.flatMap(_.signature)
+
+  def isAnonymous: Boolean = true
 
   override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
 
@@ -68,6 +76,8 @@ final case class ExistentialRestriction(role: Role, concept: Concept) extends Co
 
   def signature: Set[Entity] = concept.signature + role
 
+  def isAnonymous: Boolean = true
+
   override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
 
 }
@@ -77,6 +87,8 @@ final case class Complement(concept: Concept) extends Concept {
   def conceptSignature: Set[Concept] = concept.conceptSignature + this
 
   def signature: Set[Entity] = concept.signature
+
+  def isAnonymous: Boolean = true
 
   override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
 
@@ -97,6 +109,8 @@ final case class Nominal(individual: Individual) extends Concept {
   def conceptSignature: Set[Concept] = Set(this)
 
   def signature: Set[Entity] = Set(individual)
+
+  def isAnonymous: Boolean = true
 
   override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
 

@@ -26,6 +26,7 @@ object TestInferences extends TestSuite {
       "disjunction.ofn" - compareWhelkAndELK()
       "586fc17a00001662-merged.ofn" - compareWhelkAndHermiTAboxes()
       "insulin_secretion.ofn" - compareWhelkAndHermiTAboxes()
+      "swrl-test.ofn" - compareWhelkAndHermiTAboxes()
     }
   }
 
