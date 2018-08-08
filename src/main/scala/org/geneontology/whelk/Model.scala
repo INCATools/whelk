@@ -4,17 +4,23 @@ sealed trait QueueExpression
 
 sealed trait Entity
 
+trait HasSignature {
+
+  def signature: Set[Entity]
+
+}
+
 final case class Role(id: String) extends Entity {
 
   override val hashCode = scala.util.hashing.MurmurHash3.productHash(this)
 
 }
 
-sealed trait Concept extends QueueExpression {
+sealed trait Concept extends QueueExpression with HasSignature {
 
   def conceptSignature: Set[Concept]
 
-  def signature: Set[Entity]
+  def isAnonymous: Boolean
 
 }
 
@@ -23,6 +29,8 @@ final case class AtomicConcept(id: String) extends Concept with Entity {
   def conceptSignature: Set[Concept] = Set(this)
 
   def signature: Set[Entity] = Set(this)
+
+  def isAnonymous: Boolean = false
 
   override val hashCode = scala.util.hashing.MurmurHash3.productHash(this)
 
@@ -44,6 +52,8 @@ final case class Conjunction(left: Concept, right: Concept) extends Concept {
 
   def signature: Set[Entity] = left.signature ++ right.signature
 
+  def isAnonymous: Boolean = true
+
   override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
 
 }
@@ -53,6 +63,8 @@ final case class Disjunction(operands: Set[Concept]) extends Concept {
   def conceptSignature: Set[Concept] = operands.flatMap(_.conceptSignature) + this
 
   def signature: Set[Entity] = operands.flatMap(_.signature)
+
+  def isAnonymous: Boolean = true
 
   override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
 
@@ -64,6 +76,8 @@ final case class ExistentialRestriction(role: Role, concept: Concept) extends Co
 
   def signature: Set[Entity] = concept.signature + role
 
+  def isAnonymous: Boolean = true
+
   override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
 
 }
@@ -74,23 +88,29 @@ final case class Complement(concept: Concept) extends Concept {
 
   def signature: Set[Entity] = concept.signature
 
+  def isAnonymous: Boolean = true
+
   override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
 
 }
 
-final case class Individual(id: String) extends Entity
+final case class Individual(id: String) extends Entity with IndividualArgument {
 
-sealed trait Axiom {
+  def signature: Set[Entity] = Set(this)
 
-  def signature: Set[Entity]
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
 
 }
+
+sealed trait Axiom extends HasSignature
 
 final case class Nominal(individual: Individual) extends Concept {
 
   def conceptSignature: Set[Concept] = Set(this)
 
   def signature: Set[Entity] = Set(individual)
+
+  def isAnonymous: Boolean = true
 
   override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
 
@@ -124,8 +144,49 @@ final case class RoleAssertion(role: Role, subject: Individual, target: Individu
 
   def signature: Set[Entity] = Set(role, subject, target)
 
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
+
 }
 
 final case class Link(subject: Concept, role: Role, target: Concept) extends QueueExpression
 
 final case class `Sub+`(ci: ConceptInclusion) extends QueueExpression
+
+sealed trait IndividualArgument extends HasSignature
+
+final case class Variable(id: String) extends IndividualArgument {
+
+  def signature: Set[Entity] = Set.empty
+
+}
+
+sealed trait RuleAtom extends HasSignature {
+
+  def variables: Set[Variable]
+
+}
+
+final case class ConceptAtom(predicate: Concept, argument: IndividualArgument) extends RuleAtom {
+
+  def signature: Set[Entity] = predicate.signature ++ argument.signature
+
+  def variables: Set[Variable] = argument match {
+    case v: Variable => Set(v)
+    case _           => Set.empty
+  }
+
+}
+
+final case class RoleAtom(predicate: Role, subject: IndividualArgument, target: IndividualArgument) extends RuleAtom {
+
+  def signature: Set[Entity] = subject.signature ++ target.signature + predicate
+
+  def variables: Set[Variable] = Set(subject, target).collect { case v: Variable => v }
+
+}
+
+final case class Rule(body: List[RuleAtom], head: List[RuleAtom]) extends Axiom {
+
+  def signature: Set[Entity] = body.flatMap(_.signature).toSet ++ head.flatMap(_.signature).toSet
+
+}

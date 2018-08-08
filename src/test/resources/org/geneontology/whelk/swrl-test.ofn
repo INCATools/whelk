@@ -1,0 +1,56 @@
+Prefix(:=<http://example.org/whelk/test#>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<http://example.org/whelk/test>
+
+Declaration(Class(:A))
+Declaration(Class(:B))
+Declaration(Class(:C))
+Declaration(Class(:D))
+Declaration(Class(:E))
+Declaration(ObjectProperty(:p))
+Declaration(ObjectProperty(:q))
+Declaration(ObjectProperty(:r))
+Declaration(NamedIndividual(:x))
+Declaration(NamedIndividual(:x1))
+Declaration(NamedIndividual(:x2))
+Declaration(NamedIndividual(:y))
+Declaration(NamedIndividual(:y2))
+Declaration(NamedIndividual(:z))
+Declaration(NamedIndividual(:z2))
+
+
+############################
+#   Named Individuals
+############################
+
+# Individual: :x (:x)
+
+ObjectPropertyAssertion(:p :x :z)
+ObjectPropertyAssertion(:q :x :y)
+
+# Individual: :x1 (:x1)
+
+ClassAssertion(:A :x1)
+ClassAssertion(:B :x1)
+
+# Individual: :x2 (:x2)
+
+ObjectPropertyAssertion(:q :x2 :z2)
+ObjectPropertyAssertion(:r :x2 :y2)
+
+# Individual: :z (:z)
+
+ClassAssertion(:A :z)
+
+
+DLSafeRule(Body(ClassAtom(:B Variable(<urn:swrl#x>)))Head(ClassAtom(:D Variable(<urn:swrl#x>))))
+DLSafeRule(Body(ClassAtom(ObjectIntersectionOf(:A :B) Variable(<urn:swrl#x>)))Head(ClassAtom(:D Variable(<urn:swrl#x>))))
+DLSafeRule(Body(ObjectPropertyAtom(:q Variable(<urn:swrl#x>) Variable(<urn:swrl#y>)) ClassAtom(ObjectSomeValuesFrom(:p :A) Variable(<urn:swrl#x>)))Head(ClassAtom(:B Variable(<urn:swrl#y>))))
+DLSafeRule(Body(ObjectPropertyAtom(:r Variable(<urn:swrl#x>) Variable(<urn:swrl#y>)))Head(ClassAtom(ObjectSomeValuesFrom(:p :A) Variable(<urn:swrl#x>))))
+)

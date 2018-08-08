@@ -21,7 +21,9 @@ final case class ReasonerState(
   linksBySubject:                         Map[Concept, Map[Role, Set[Concept]]],
   linksByTarget:                          Map[Concept, Map[Role, List[Concept]]],
   negExistsMapByConcept:                  Map[Concept, Set[ExistentialRestriction]],
-  propagations:                           Map[Concept, Map[Role, List[ExistentialRestriction]]]) {
+  propagations:                           Map[Concept, Map[Role, List[ExistentialRestriction]]],
+  ruleEngine:                             RuleEngine,
+  wm:                                     WorkingMemory) {
 
   def subs: Set[ConceptInclusion] = closureSubsBySuperclass.flatMap {
     case (superclass, subclasses) =>
@@ -32,6 +34,12 @@ final case class ReasonerState(
     (Nominal(ind), superclasses) <- closureSubsBySubclass
     a @ AtomicConcept(_) <- superclasses
   } yield ConceptAssertion(a, ind)).toSet
+
+  def roleAssertions: Set[RoleAssertion] = (for {
+    (Nominal(target), links) <- linksByTarget
+    (role, subjects) <- links
+    Nominal(subject) <- subjects
+  } yield RoleAssertion(role, subject, target)).toSet
 
   def computeTaxonomy: Map[AtomicConcept, (Set[AtomicConcept], Set[AtomicConcept])] =
     closureSubsBySubclass.collect {
@@ -77,7 +85,7 @@ final case class ReasonerState(
 
 object ReasonerState {
 
-  val empty: ReasonerState = ReasonerState(Map.empty, Map.empty, Nil, Nil, false, Set.empty, Map.empty, Map(Bottom -> Set.empty), Map(Top -> Set.empty), Set.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty)
+  val empty: ReasonerState = ReasonerState(Map.empty, Map.empty, Nil, Nil, false, Set.empty, Map.empty, Map(Bottom -> Set.empty), Map(Top -> Set.empty), Set.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, RuleEngine.empty, RuleEngine.empty.emptyMemory)
 
 }
 
@@ -89,8 +97,14 @@ object Reasoner {
     val allRoleInclusions = axioms.collect { case ri: RoleInclusion => ri }
     val hier: Map[Role, Set[Role]] = saturateRoles(allRoleInclusions) |+| allRoles.map(r => r -> Set(r)).toMap
     val hierComps = indexRoleCompositions(hier, axioms.collect { case rc: RoleComposition => rc })
-    val concIncs = axioms.collect { case ci: ConceptInclusion => ci }
-    assert(concIncs, ReasonerState.empty.copy(hier = hier, hierComps = hierComps))
+    val rules = axioms.collect { case r: Rule => r } //TODO create rules from certain Whelk axioms
+    val anonymousRulePredicates = rules.flatMap(_.body.collect {
+      case ConceptAtom(concept, _) if concept.isAnonymous => ConceptInclusion(concept, Top)
+    })
+    val concIncs = axioms.collect { case ci: ConceptInclusion => ci } ++ anonymousRulePredicates
+    val ruleEngine = RuleEngine(rules)
+    val wm = ruleEngine.emptyMemory
+    assert(concIncs, ReasonerState.empty.copy(hier = hier, hierComps = hierComps, ruleEngine = ruleEngine, wm = wm))
   }
 
   def assert(axioms: Set[ConceptInclusion], reasoner: ReasonerState): ReasonerState = {
@@ -145,7 +159,11 @@ object Reasoner {
       val closureSubsBySuperclass = reasoner.closureSubsBySuperclass.updated(superclass, (subs + subclass))
       val supers = reasoner.closureSubsBySubclass.getOrElse(subclass, Set.empty)
       val closureSubsBySubclass = reasoner.closureSubsBySubclass.updated(subclass, (supers + superclass))
-      `R⊑right`(ci, `R+∃b-right`(ci, `R-∃`(ci, `R+⨅b-right`(ci, `R+⨅right`(ci, `R-⨅`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass, closureSubsBySubclass = closureSubsBySubclass))))))))
+      val updatedReasoner = `R⊑right`(ci, `R+∃b-right`(ci, `R-∃`(ci, `R+⨅b-right`(ci, `R+⨅right`(ci, `R-⨅`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass, closureSubsBySubclass = closureSubsBySubclass))))))))
+      ci match {
+        case ConceptInclusion(Nominal(ind), superclass) => reasoner.ruleEngine.processConceptAssertion(ConceptAssertion(superclass, ind), updatedReasoner)
+        case _ => updatedReasoner
+      }
     }
   }
 
@@ -156,7 +174,11 @@ object Reasoner {
       val closureSubsBySuperclass = reasoner.closureSubsBySuperclass.updated(superclass, (subs + subclass))
       val supers = reasoner.closureSubsBySubclass.getOrElse(subclass, Set.empty)
       val closureSubsBySubclass = reasoner.closureSubsBySubclass.updated(subclass, (supers + superclass))
-      `R⊑right`(ci, `R+∃b-right`(ci, `R+⨅b-right`(ci, `R+⨅right`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass, closureSubsBySubclass = closureSubsBySubclass))))))
+      val updatedReasoner = `R⊑right`(ci, `R+∃b-right`(ci, `R+⨅b-right`(ci, `R+⨅right`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass, closureSubsBySubclass = closureSubsBySubclass))))))
+      ci match {
+        case ConceptInclusion(Nominal(ind), superclass) => updatedReasoner.ruleEngine.processConceptAssertion(ConceptAssertion(superclass, ind), updatedReasoner)
+        case _ => updatedReasoner
+      }
     }
   }
 
@@ -173,7 +195,11 @@ object Reasoner {
       val updatedSubjects = subject :: subjects
       val updatedRolesToSubjects = rolesToSubjects.updated(role, updatedSubjects)
       val linksByTarget = reasoner.linksByTarget.updated(target, updatedRolesToSubjects)
-      `R⤳`(link, `R∘left`(link, `R∘right`(link, `R+∃right`(link, `R⊥right`(link, reasoner.copy(linksBySubject = linksBySubject, linksByTarget = linksByTarget))))))
+      val updatedReasoner = `R⤳`(link, `R∘left`(link, `R∘right`(link, `R+∃right`(link, `R⊥right`(link, reasoner.copy(linksBySubject = linksBySubject, linksByTarget = linksByTarget))))))
+      link match {
+        case Link(Nominal(subjectInd), role, Nominal(targetInd)) => updatedReasoner.ruleEngine.processRoleAssertion(RoleAssertion(role, subjectInd, targetInd), updatedReasoner)
+        case _ => updatedReasoner
+      }
     }
   }
 
