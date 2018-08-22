@@ -45,7 +45,8 @@ import org.semanticweb.owlapi.util.Version
 
 /**
  * WhelkOWLReasoner provides an OWL API OWLReasoner wrapper for Whelk.
- * It is mutable and should only be used by a single thread. For multithreaded
+ * It is not thread-safe for ontology changes, but should be able to
+ * answer multiple queries in parallel. For better multithreaded
  * applications use the Whelk Scala API instead.
  */
 class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) extends OWLReasoner {
@@ -225,9 +226,9 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
     case _          => true
   }
 
-  override def isEntailed(axiom: OWLAxiom): Boolean = ???
+  override def isEntailed(axiom: OWLAxiom): Boolean = throw new UnsupportedOperationException("isEntailed") //TODO
 
-  override def isEntailed(axioms: JSet[_ <: OWLAxiom]): Boolean = ???
+  override def isEntailed(axioms: JSet[_ <: OWLAxiom]): Boolean = throw new UnsupportedOperationException("isEntailed") //TODO
 
   override def precomputeInferences(infType: InferenceType*): Unit = ()
 
