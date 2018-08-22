@@ -42,6 +42,7 @@ import org.semanticweb.owlapi.reasoner.impl.NodeFactory
 import org.semanticweb.owlapi.reasoner.impl.OWLClassNodeSet
 import org.semanticweb.owlapi.reasoner.impl.OWLNamedIndividualNodeSet
 import org.semanticweb.owlapi.util.Version
+import org.semanticweb.owlapi.model.OWLObjectPropertyAssertionAxiom
 
 /**
  * WhelkOWLReasoner provides an OWL API OWLReasoner wrapper for Whelk.
@@ -292,5 +293,10 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
   override def getUnsatisfiableClasses(): Node[OWLClass] = getBottomClassNode()
 
   private def freshConcept: AtomicConcept = AtomicConcept(s"urn:uuid:${UUID.randomUUID.toString}")
+
+  def getAllObjectPropertyValues(ind: OWLNamedIndividual): JSet[OWLObjectPropertyAssertionAxiom] = {
+    val Ind = Individual(ind.getIRI.toString)
+    whelk.roleAssertions.collect { case RoleAssertion(prop, Ind, value) => ObjectPropertyAssertion(ObjectProperty(prop.id), ind, NamedIndividual(value.id)) }.asJava
+  }
 
 }
