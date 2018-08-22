@@ -286,7 +286,7 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
         (fresh, Reasoner.assert(Set(ConceptInclusion(fresh, concept)), whelk))
       case None => throw new UnsupportedOperationException(s"getEquivalentClasses: $ce")
     }
-    !reasoner.closureSubsBySubclass(concept)(Bottom)
+    !reasoner.closureSubsBySubclass.getOrElse(concept, Set.empty)(Bottom)
   }
 
   override def getUnsatisfiableClasses(): Node[OWLClass] = getBottomClassNode()
