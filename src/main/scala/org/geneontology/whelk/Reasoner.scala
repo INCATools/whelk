@@ -51,28 +51,33 @@ final case class ReasonerState(
       case (n @ Nominal(ind), subsumers) => ind -> directSubsumers(n, subsumers)._2
     }
 
-  def directlySubsumes(concept: Concept): (Set[AtomicConcept], Set[AtomicConcept]) =
-    direct(concept, closureSubsBySuperclass.getOrElse(concept, Set.empty) + Bottom, closureSubsBySuperclass.withDefaultValue(Set.empty))
+  //FIXME clarify how these methods differ... names are confusing
 
-  def directSubsumes(concept: Concept, allSubsConcepts: Set[Concept]): (Set[AtomicConcept], Set[AtomicConcept]) =
-    direct(concept, allSubsConcepts + Bottom, closureSubsBySuperclass.withDefaultValue(Set.empty))
+  def directlySubsumes(concept: Concept): (Set[AtomicConcept], Set[AtomicConcept]) =
+    direct(concept, closureSubsBySuperclass.getOrElse(concept, Set.empty) + Bottom, closureSubsBySuperclass.withDefaultValue(Set.empty), Bottom)
+
+  def directlySubsumedBy(concept: Concept): (Set[AtomicConcept], Set[AtomicConcept]) =
+    direct(concept, closureSubsBySubclass.getOrElse(concept, Set.empty) + Top, closureSubsBySubclass.withDefaultValue(Set.empty), Top)
+
+  //  def directSubsumes(concept: Concept, allSubsConcepts: Set[Concept]): (Set[AtomicConcept], Set[AtomicConcept]) =
+  //    direct(concept, allSubsConcepts + Bottom, closureSubsBySuperclass.withDefaultValue(Set.empty))
 
   def directSubsumers(concept: Concept, allSubsConcepts: Set[Concept]): (Set[AtomicConcept], Set[AtomicConcept]) =
-    direct(concept, allSubsConcepts + Top, closureSubsBySubclass.withDefaultValue(Set.empty))
+    direct(concept, allSubsConcepts + Top, closureSubsBySubclass.withDefaultValue(Set.empty), Top)
 
-  def direct(concept: Concept, allSubsConcepts: Set[Concept], subsumerFunction: Concept => Concept => Boolean): (Set[AtomicConcept], Set[AtomicConcept]) = {
+  def direct(concept: Concept, allSubsConcepts: Set[Concept], subsumerFunction: Concept => Concept => Boolean, tautology: Concept): (Set[AtomicConcept], Set[AtomicConcept]) = {
     val allSubsumers = allSubsConcepts.iterator.collect { case ac: AtomicConcept => ac }.filterNot(_ == concept)
     allSubsumers.foldLeft((Set.empty[AtomicConcept], Set.empty[AtomicConcept])) {
       case ((equivalents, directSubsumers), subsumer) =>
-        if (subsumerFunction(subsumer)(concept)) (equivalents + subsumer, directSubsumers)
+        if (concept == tautology || subsumerFunction(subsumer)(concept)) (equivalents + subsumer, directSubsumers)
         else {
           @tailrec
           def loop(currentDirectSubs: List[AtomicConcept], isDirect: Boolean, remove: List[AtomicConcept], add: List[AtomicConcept]): (List[AtomicConcept], List[AtomicConcept]) =
             (currentDirectSubs, isDirect, remove, add) match {
               case (Nil, true, remove, add) => (remove, subsumer :: add)
               case (Nil, false, remove, add) => (remove, add)
-              case (other :: rest, isDirect, remove, add) if subsumerFunction(other)(subsumer) => (remove, add)
-              case (other :: rest, isDirect, remove, add) if subsumerFunction(subsumer)(other) => loop(rest, isDirect, other :: remove, add)
+              case (other :: rest, isDirect, remove, add) if subsumer == tautology || subsumerFunction(other)(subsumer) => (remove, add)
+              case (other :: rest, isDirect, remove, add) if other == tautology || subsumerFunction(subsumer)(other) => loop(rest, isDirect, other :: remove, add)
               case (other :: rest, isDirect, remove, add) => loop(rest, isDirect, remove, add)
             }
           val (remove, add) = loop(directSubsumers.toList, true, Nil, Nil)

@@ -1,0 +1,68 @@
+Prefix(:=<http://example.org/test/>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<http://example.org/test/>
+
+Declaration(Class(:A))
+Declaration(Class(:AandB))
+Declaration(Class(:B))
+Declaration(Class(:C))
+Declaration(Class(:D))
+Declaration(Class(:E))
+Declaration(ObjectProperty(:q))
+Declaration(ObjectProperty(:r))
+Declaration(ObjectProperty(:s))
+Declaration(NamedIndividual(:ab))
+Declaration(NamedIndividual(:c))
+############################
+#   Object Properties
+############################
+
+# Object Property: :q (:q)
+
+InverseObjectProperties(:q :s)
+
+# Object Property: :r (:r)
+
+SubObjectPropertyOf(:r :s)
+
+
+############################
+#   Classes
+############################
+
+# Class: :AandB (:AandB)
+
+EquivalentClasses(:AandB ObjectIntersectionOf(:A :B))
+
+# Class: :B (:B)
+
+SubClassOf(:B :C)
+
+# Class: :D (:D)
+
+SubClassOf(:D :A)
+SubClassOf(:D :B)
+
+# Class: :E (:E)
+
+SubClassOf(:E :D)
+
+
+############################
+#   Named Individuals
+############################
+
+# Individual: :ab (:ab)
+
+ClassAssertion(:A :ab)
+ClassAssertion(:B :ab)
+ObjectPropertyAssertion(:r :ab :c)
+
+
+)
