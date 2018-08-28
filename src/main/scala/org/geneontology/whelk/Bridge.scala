@@ -112,7 +112,9 @@ object Bridge {
         operands.toList.map(convertExpression).sequence.map(convert)
       case ObjectUnionOf(operands) =>
         operands.toList.map(convertExpression).sequence.map(_.toSet).map(Disjunction(_))
-      case ObjectComplementOf(concept) => convertExpression(concept).map(Complement(_))
+      case ObjectComplementOf(concept)                                => convertExpression(concept).map(Complement(_))
+      case ObjectOneOf(individuals) if individuals.size == 1          => individuals.collect { case NamedIndividual(iri) => Nominal(Individual(iri.toString)) }.headOption
+      case ObjectHasValue(ObjectProperty(prop), NamedIndividual(ind)) => Some(ExistentialRestriction(Role(prop.toString), Nominal(Individual(ind.toString))))
       case other =>
         //println(s"Not supported: $other")
         None

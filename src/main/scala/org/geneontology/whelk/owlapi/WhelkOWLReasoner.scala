@@ -43,6 +43,10 @@ import org.semanticweb.owlapi.reasoner.impl.OWLClassNodeSet
 import org.semanticweb.owlapi.reasoner.impl.OWLNamedIndividualNodeSet
 import org.semanticweb.owlapi.util.Version
 import org.semanticweb.owlapi.model.OWLObjectPropertyAssertionAxiom
+import org.semanticweb.owlapi.reasoner.impl.OWLNamedIndividualNode
+import org.semanticweb.owlapi.model.OWLObjectProperty
+import org.semanticweb.owlapi.model.OWLIndividual
+import org.semanticweb.owlapi.model.IRI
 
 /**
  * WhelkOWLReasoner provides an OWL API OWLReasoner wrapper for Whelk.
@@ -91,6 +95,10 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
 
   override def flush(): Unit = {
     whelk = Reasoner.assert(Bridge.ontologyToAxioms(ontology))
+    pendingChanges = Queue.empty
+    pendingAxiomAdditions = Set.empty
+    pendingAxiomRemovals = Set.empty
+    hasPendingChanges = false
   }
 
   override def getDifferentIndividuals(ind: OWLNamedIndividual): NodeSet[OWLNamedIndividual] =
@@ -137,14 +145,14 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
 
   override def getRootOntology(): OWLOntology = ontology
 
-  override def getSameIndividuals(ind: OWLNamedIndividual): Node[OWLNamedIndividual] = throw new UnsupportedOperationException("getSameIndividuals")
+  override def getSameIndividuals(ind: OWLNamedIndividual): Node[OWLNamedIndividual] = new OWLNamedIndividualNode(ind) //FIXME implement correctly
 
   override def getSubClasses(ce: OWLClassExpression, direct: Boolean): NodeSet[OWLClass] = {
     val (concept, reasoner) = Bridge.convertExpression(ce) match {
       case Some(named @ AtomicConcept(_)) => (named, whelk)
-      case Some(concept) =>
+      case Some(expression) =>
         val fresh = freshConcept
-        (fresh, Reasoner.assert(Set(ConceptInclusion(fresh, concept), ConceptInclusion(concept, fresh)), whelk))
+        (fresh, Reasoner.assert(Set(ConceptInclusion(fresh, expression), ConceptInclusion(expression, fresh)), whelk))
       case None => throw new UnsupportedOperationException(s"getSubClasses: $ce")
     }
     val subsumed: Set[AtomicConcept] = if (direct) {
@@ -166,9 +174,9 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
   override def getSuperClasses(ce: OWLClassExpression, direct: Boolean): NodeSet[OWLClass] = {
     val (concept, reasoner) = Bridge.convertExpression(ce) match {
       case Some(named @ AtomicConcept(_)) => (named, whelk)
-      case Some(concept) =>
+      case Some(expression) =>
         val fresh = freshConcept
-        (fresh, Reasoner.assert(Set(ConceptInclusion(fresh, concept), ConceptInclusion(concept, fresh)), whelk))
+        (fresh, Reasoner.assert(Set(ConceptInclusion(fresh, expression), ConceptInclusion(expression, fresh)), whelk))
       case None => throw new UnsupportedOperationException(s"getSuperClasses: $ce")
     }
     val subsumers: Set[AtomicConcept] = if (direct) {
@@ -197,7 +205,7 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
 
   override def getTopDataPropertyNode(): Node[OWLDataProperty] = throw new UnsupportedOperationException("getTopDataPropertyNode")
 
-  override def getTopObjectPropertyNode(): Node[OWLObjectPropertyExpression] = throw new UnsupportedOperationException("getTopObjectPropertyNode")
+  override def getTopObjectPropertyNode(): Node[OWLObjectPropertyExpression] = NodeFactory.getOWLObjectPropertyTopNode
 
   override def getBottomClassNode(): Node[OWLClass] = {
     val bottomEquivalents = whelk.closureSubsBySuperclass.getOrElse(Bottom, Set.empty) + Bottom
@@ -207,7 +215,7 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
 
   override def getBottomDataPropertyNode(): Node[OWLDataProperty] = throw new UnsupportedOperationException("getBottomDataPropertyNode")
 
-  override def getBottomObjectPropertyNode(): Node[OWLObjectPropertyExpression] = throw new UnsupportedOperationException("getBottomObjectPropertyNode")
+  override def getBottomObjectPropertyNode(): Node[OWLObjectPropertyExpression] = NodeFactory.getOWLObjectPropertyBottomNode
 
   override def getBufferingMode(): BufferingMode = bufferingMode
 
@@ -255,7 +263,7 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
 
   override def getEquivalentDataProperties(arg0: OWLDataProperty): Node[OWLDataProperty] = throw new UnsupportedOperationException("getEquivalentDataProperties")
 
-  override def getEquivalentObjectProperties(arg0: OWLObjectPropertyExpression): Node[OWLObjectPropertyExpression] = throw new UnsupportedOperationException("getEquivalentObjectProperties")
+  override def getEquivalentObjectProperties(pe: OWLObjectPropertyExpression): Node[OWLObjectPropertyExpression] = NodeFactory.getOWLObjectPropertyNode(pe) //FIXME ?
 
   override def getFreshEntityPolicy(): FreshEntityPolicy = FreshEntityPolicy.ALLOW
 
@@ -280,14 +288,27 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
   override def isPrecomputed(inferenceType: InferenceType): Boolean = false
 
   override def isSatisfiable(ce: OWLClassExpression): Boolean = {
-    val (concept, reasoner) = Bridge.convertExpression(ce) match {
-      case Some(named @ AtomicConcept(_)) => (named, whelk)
-      case Some(concept) =>
-        val fresh = freshConcept
-        (fresh, Reasoner.assert(Set(ConceptInclusion(fresh, concept)), whelk))
-      case None => throw new UnsupportedOperationException(s"getEquivalentClasses: $ce")
+    // First we handle the special case that a class assertion or object property assertion is being checked by the OWL API explanation tool.
+    // We need to include inferences made by the RL engine.
+    val maybeSatisfiable = ce match {
+      case ObjectIntersectionOf(operands) if operands.size == 2 =>
+        operands.toList match {
+          case ObjectOneOf(individuals) :: ObjectComplementOf(expression) :: Nil if individuals.size == 1 => Some(!(getInstances(expression, false).getFlattened.contains(individuals.head)))
+          case ObjectComplementOf(expression) :: ObjectOneOf(individuals) :: Nil if individuals.size == 1 => Some(!(getInstances(expression, false).getFlattened.contains(individuals.head)))
+          case _ => None
+        }
     }
-    !reasoner.closureSubsBySubclass.getOrElse(concept, Set.empty)(Bottom)
+    maybeSatisfiable.getOrElse {
+      // This is the "normal" path to check EL inferences.
+      val (concept, reasoner) = Bridge.convertExpression(ce) match {
+        case Some(named @ AtomicConcept(_)) => (named, whelk)
+        case Some(expression) =>
+          val fresh = freshConcept
+          (fresh, Reasoner.assert(Set(ConceptInclusion(fresh, expression)), whelk))
+        case None => throw new UnsupportedOperationException(s"getEquivalentClasses: $ce")
+      }
+      !reasoner.closureSubsBySubclass.getOrElse(concept, Set.empty)(Bottom)
+    }
   }
 
   override def getUnsatisfiableClasses(): Node[OWLClass] = getBottomClassNode()

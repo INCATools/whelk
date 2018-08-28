@@ -14,6 +14,7 @@ Declaration(Class(:B))
 Declaration(Class(:C))
 Declaration(Class(:D))
 Declaration(Class(:E))
+Declaration(Class(:qSomeA))
 Declaration(ObjectProperty(:q))
 Declaration(ObjectProperty(:r))
 Declaration(ObjectProperty(:s))
@@ -52,6 +53,10 @@ SubClassOf(:D :B)
 # Class: :E (:E)
 
 SubClassOf(:E :D)
+
+# Class: :qSomeA (:qSomeA)
+
+EquivalentClasses(:qSomeA ObjectSomeValuesFrom(:q :A))
 
 
 ############################
