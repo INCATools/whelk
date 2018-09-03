@@ -57,9 +57,6 @@ import org.semanticweb.owlapi.model.IRI
 class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) extends OWLReasoner {
 
   private var whelk: ReasonerState = ReasonerState.empty
-
-  private val factory = ontology.getOWLOntologyManager.getOWLDataFactory
-
   private var hasPendingChanges: Boolean = true
   private var pendingChanges: Queue[OWLOntologyChange] = Queue.empty
   private var pendingAxiomAdditions: Set[OWLAxiom] = Set.empty
@@ -74,9 +71,9 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
         pendingChanges = pendingChanges.enqueue(change)
         if (change.isAxiomChange()) {
           pendingAxiomAdditions = pendingAxiomAdditions + change.getAxiom
-          if (change.isAddAxiom()) {
+          if (change.isAddAxiom) {
             pendingAxiomAdditions += change.getAxiom
-          } else if (change.isRemoveAxiom()) {
+          } else if (change.isRemoveAxiom) {
             pendingAxiomRemovals += change.getAxiom
           }
         }
@@ -107,9 +104,9 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
   override def getInstances(ce: OWLClassExpression, direct: Boolean): NodeSet[OWLNamedIndividual] = {
     val (concept, reasoner) = Bridge.convertExpression(ce) match {
       case Some(named @ AtomicConcept(_)) => (named, whelk)
-      case Some(concept) =>
-        val fresh = freshConcept
-        (fresh, Reasoner.assert(Set(ConceptInclusion(concept, fresh)), whelk))
+      case Some(expression) =>
+        val fresh = freshConcept()
+        (fresh, Reasoner.assert(Set(ConceptInclusion(expression, fresh)), whelk))
       case None => throw new UnsupportedOperationException(s"getInstances: $ce")
     }
     val subsumed = if (direct) {
@@ -141,7 +138,7 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
 
   override def getReasonerName(): String = "Whelk"
 
-  override def getReasonerVersion(): Version = return new Version(0, 0, 0, 0); //FIXME
+  override def getReasonerVersion(): Version = new Version(0, 0, 0, 0) //FIXME
 
   override def getRootOntology(): OWLOntology = ontology
 
@@ -151,7 +148,7 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
     val (concept, reasoner) = Bridge.convertExpression(ce) match {
       case Some(named @ AtomicConcept(_)) => (named, whelk)
       case Some(expression) =>
-        val fresh = freshConcept
+        val fresh = freshConcept()
         (fresh, Reasoner.assert(Set(ConceptInclusion(fresh, expression), ConceptInclusion(expression, fresh)), whelk))
       case None => throw new UnsupportedOperationException(s"getSubClasses: $ce")
     }
@@ -175,7 +172,7 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
     val (concept, reasoner) = Bridge.convertExpression(ce) match {
       case Some(named @ AtomicConcept(_)) => (named, whelk)
       case Some(expression) =>
-        val fresh = freshConcept
+        val fresh = freshConcept()
         (fresh, Reasoner.assert(Set(ConceptInclusion(fresh, expression), ConceptInclusion(expression, fresh)), whelk))
       case None => throw new UnsupportedOperationException(s"getSuperClasses: $ce")
     }
@@ -252,9 +249,9 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
   override def getEquivalentClasses(ce: OWLClassExpression): Node[OWLClass] = {
     val (concept, reasoner) = Bridge.convertExpression(ce) match {
       case Some(named @ AtomicConcept(_)) => (named, whelk)
-      case Some(concept) =>
-        val fresh = freshConcept
-        (fresh, Reasoner.assert(Set(ConceptInclusion(fresh, concept), ConceptInclusion(concept, fresh)), whelk))
+      case Some(expression) =>
+        val fresh = freshConcept()
+        (fresh, Reasoner.assert(Set(ConceptInclusion(fresh, expression), ConceptInclusion(expression, fresh)), whelk))
       case None => throw new UnsupportedOperationException(s"getEquivalentClasses: $ce")
     }
     val equivClasses = (reasoner.closureSubsBySubclass.getOrElse(concept, Set.empty).intersect(reasoner.closureSubsBySuperclass.getOrElse(concept, Set.empty)) - concept).collect { case AtomicConcept(iri) => Class(iri) }
@@ -303,7 +300,7 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
       val (concept, reasoner) = Bridge.convertExpression(ce) match {
         case Some(named @ AtomicConcept(_)) => (named, whelk)
         case Some(expression) =>
-          val fresh = freshConcept
+          val fresh = freshConcept()
           (fresh, Reasoner.assert(Set(ConceptInclusion(fresh, expression)), whelk))
         case None => throw new UnsupportedOperationException(s"getEquivalentClasses: $ce")
       }
@@ -313,7 +310,7 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
 
   override def getUnsatisfiableClasses(): Node[OWLClass] = getBottomClassNode()
 
-  private def freshConcept: AtomicConcept = AtomicConcept(s"urn:uuid:${UUID.randomUUID.toString}")
+  private def freshConcept(): AtomicConcept = AtomicConcept(s"urn:uuid:${UUID.randomUUID.toString}")
 
   def getAllObjectPropertyValues(ind: OWLNamedIndividual): JSet[OWLObjectPropertyAssertionAxiom] = {
     val Ind = Individual(ind.getIRI.toString)

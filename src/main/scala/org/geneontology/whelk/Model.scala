@@ -12,7 +12,7 @@ trait HasSignature {
 
 final case class Role(id: String) extends Entity {
 
-  override val hashCode = scala.util.hashing.MurmurHash3.productHash(this)
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
 
 }
 
@@ -32,11 +32,11 @@ final case class AtomicConcept(id: String) extends Concept with Entity {
 
   def isAnonymous: Boolean = false
 
-  override val hashCode = scala.util.hashing.MurmurHash3.productHash(this)
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
 
 }
 
-final object BuiltIn {
+object BuiltIn {
 
   private val owl = "http://www.w3.org/2002/07/owl"
 

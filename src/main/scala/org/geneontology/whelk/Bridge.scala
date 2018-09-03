@@ -10,6 +10,7 @@ import org.semanticweb.owlapi.model.OWLOntology
 import org.semanticweb.owlapi.model.parameters.Imports
 import org.geneontology.whelk.owlapi.SWRLUtil
 import org.geneontology.whelk.{ Variable => WVariable }
+import org.geneontology.whelk.{ Individual => WIndividual }
 import BuiltIn._
 import org.semanticweb.owlapi.model.SWRLAtom
 import org.semanticweb.owlapi.model.SWRLIArgument
@@ -43,11 +44,11 @@ object Bridge {
         case _                      => ??? //impossible
       }.toSet
     case ClassAssertion(_, cls, NamedIndividual(iri)) => convertExpression(cls).map(concept =>
-      ConceptInclusion(Nominal(Individual(iri.toString)), concept)).toSet
+      ConceptInclusion(Nominal(WIndividual(iri.toString)), concept)).toSet
     case ObjectPropertyAssertion(_, ObjectProperty(prop), NamedIndividual(subj), NamedIndividual(obj)) =>
-      Set(ConceptInclusion(Nominal(Individual(subj.toString)), ExistentialRestriction(Role(prop.toString), Nominal(Individual(obj.toString)))))
+      Set(ConceptInclusion(Nominal(WIndividual(subj.toString)), ExistentialRestriction(Role(prop.toString), Nominal(WIndividual(obj.toString)))))
     case ObjectPropertyAssertion(_, ObjectInverseOf(ObjectProperty(prop)), NamedIndividual(obj), NamedIndividual(subj)) =>
-      Set(ConceptInclusion(Nominal(Individual(subj.toString)), ExistentialRestriction(Role(prop.toString), Nominal(Individual(obj.toString)))))
+      Set(ConceptInclusion(Nominal(WIndividual(subj.toString)), ExistentialRestriction(Role(prop.toString), Nominal(WIndividual(obj.toString)))))
     case SubObjectPropertyOf(_, ObjectProperty(subproperty), ObjectProperty(superproperty)) =>
       val sub = Role(subproperty.toString)
       val sup = Role(superproperty.toString)
@@ -88,7 +89,7 @@ object Bridge {
       bodyAtoms <- convertAtomSet(body)
       headAtoms <- convertAtomSet(head)
     } yield Rule(bodyAtoms, headAtoms)).toSet
-    case other =>
+    case _ =>
       //println(s"Not supported: $other")
       Set.empty
   }
@@ -111,11 +112,11 @@ object Bridge {
         }
         operands.toList.map(convertExpression).sequence.map(convert)
       case ObjectUnionOf(operands) =>
-        operands.toList.map(convertExpression).sequence.map(_.toSet).map(Disjunction(_))
-      case ObjectComplementOf(concept)                                => convertExpression(concept).map(Complement(_))
-      case ObjectOneOf(individuals) if individuals.size == 1          => individuals.collect { case NamedIndividual(iri) => Nominal(Individual(iri.toString)) }.headOption
-      case ObjectHasValue(ObjectProperty(prop), NamedIndividual(ind)) => Some(ExistentialRestriction(Role(prop.toString), Nominal(Individual(ind.toString))))
-      case other =>
+        operands.toList.map(convertExpression).sequence.map(_.toSet).map(Disjunction)
+      case ObjectComplementOf(concept)                                => convertExpression(concept).map(Complement)
+      case ObjectOneOf(individuals) if individuals.size == 1          => individuals.collectFirst { case NamedIndividual(iri) => Nominal(WIndividual(iri.toString)) }
+      case ObjectHasValue(ObjectProperty(prop), NamedIndividual(ind)) => Some(ExistentialRestriction(Role(prop.toString), Nominal(WIndividual(ind.toString))))
+      case _ =>
         //println(s"Not supported: $other")
         None
     }
@@ -141,7 +142,7 @@ object Bridge {
   }
 
   def convertAtomArg(arg: SWRLIArgument): Option[IndividualArgument] = arg match {
-    case IndividualArg(NamedIndividual(iri)) => Some(Individual(iri.toString))
+    case IndividualArg(NamedIndividual(iri)) => Some(WIndividual(iri.toString))
     case Variable(iri)                       => Some(WVariable(iri.toString))
     case _                                   => None
   }

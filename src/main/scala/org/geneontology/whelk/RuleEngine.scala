@@ -20,7 +20,7 @@ final case class RuleEngine(rules: Set[Rule]) {
 
   private def constructReteNetwork(rules: Set[Rule]): (Map[Concept, ConceptAtomAlphaNode], Map[Role, RoleAtomAlphaNode], Set[JoinNodeSpec]) = {
     val nodes = rules.foldLeft(Set.empty[BetaNode]) { (nodes, rule) =>
-      val (node, allConceptNodes, allRoleNodes) = processRuleAtoms(rule.body, Nil, rule, Map.empty, Map.empty)
+      val (_, allConceptNodes, allRoleNodes) = processRuleAtoms(rule.body, Nil, rule, Map.empty, Map.empty)
       nodes ++ allConceptNodes.values ++ allRoleNodes.values
     }
     val joinNodes = nodes.collect { case j: JoinNode[_] => j }
@@ -31,10 +31,10 @@ final case class RuleEngine(rules: Set[Rule]) {
       }
     }
     val conceptAlphas = nodes.collect { case n: ConceptAtomJoinNode => n }.groupBy(_.atom.predicate).map {
-      case (concept, nodes) => concept -> ConceptAtomAlphaNode(concept, orderChildren(nodes.toList, ancestorMap))
+      case (concept, childJoinNodes) => concept -> ConceptAtomAlphaNode(concept, orderChildren(childJoinNodes.toList, ancestorMap))
     }
     val roleAlphas = nodes.collect { case n: RoleAtomJoinNode => n }.groupBy(_.atom.predicate).map {
-      case (role, nodes) => role -> RoleAtomAlphaNode(role, orderChildren(nodes.toList, ancestorMap))
+      case (role, childJoinNodes) => role -> RoleAtomAlphaNode(role, orderChildren(childJoinNodes.toList, ancestorMap))
     }
     (conceptAlphas, roleAlphas, allSpecs)
   }

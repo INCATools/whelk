@@ -84,11 +84,11 @@ sealed trait JoinNode[T] extends BetaNode with BetaParent {
 
   def spec: JoinNodeSpec
 
-  val thisPattern = spec.pattern.head
-  val leftParentSpec = JoinNodeSpec(spec.pattern.drop(1))
-  val parentBoundVariables = leftParentSpec.pattern.flatMap(_.variables).toSet
-  val thisPatternVariables = thisPattern.variables
-  val matchVariables = parentBoundVariables.intersect(thisPatternVariables)
+  protected[this] val thisPattern: RuleAtom = spec.pattern.head
+  protected[this] val leftParentSpec: JoinNodeSpec = JoinNodeSpec(spec.pattern.drop(1))
+  protected[this] val parentBoundVariables: Set[Variable] = leftParentSpec.pattern.flatMap(_.variables).toSet
+  protected[this] val thisPatternVariables: Set[Variable] = thisPattern.variables
+  protected[this] val matchVariables: Set[Variable] = parentBoundVariables.intersect(thisPatternVariables)
 
   def rightActivate(item: T, reasoner: ReasonerState): ReasonerState
 
@@ -131,11 +131,11 @@ final case class ConceptAtomJoinNode(atom: ConceptAtom, children: List[BetaNode]
     val parentMem = reasoner.wm.beta(leftParentSpec)
     val newTokens = atom.argument match {
       case variable: Variable => parentMem.tokenIndex.get(variable) match {
-        case Some(bound) => bound.get(individual).getOrElse(Nil).toList
+        case Some(bound) => bound.getOrElse(individual, Nil).toList
         case None        => parentMem.tokens.map(_.extend(Map(variable -> individual)))
       }
-      case individualArg: Individual if (individualArg != individual) => Nil
-      case individualArg: Individual                                  => parentMem.tokens
+      case individualArg: Individual if individualArg != individual => Nil
+      case _: Individual                                  => parentMem.tokens
     }
     activateChildren(newTokens, reasoner)
   }
@@ -150,34 +150,34 @@ final case class RoleAtomJoinNode(atom: RoleAtom, children: List[BetaNode], spec
     case RoleAtom(_, subjectVar: Variable, targetVar: Variable) => (ra: RoleAssertion) => Map(subjectVar -> ra.subject, targetVar -> ra.target)
     case RoleAtom(_, _, targetVar: Variable) => (ra: RoleAssertion) => Map(targetVar -> ra.target)
     case RoleAtom(_, subjectVar: Variable, _) => (ra: RoleAssertion) => Map(subjectVar -> ra.subject)
-    case _ => (ra: RoleAssertion) => Map.empty
+    case _ => (_: RoleAssertion) => Map.empty
   }
 
   val findTokensForAssertion: (RoleAssertion, BetaMemory) => List[Token] = (atom.subject, atom.target) match {
 
-    case (subjectVariable: Variable, targetVariable: Variable) if (parentBoundVariables(subjectVariable) && parentBoundVariables(targetVariable)) =>
+    case (subjectVariable: Variable, targetVariable: Variable) if parentBoundVariables(subjectVariable) && parentBoundVariables(targetVariable) =>
       (assertion: RoleAssertion, parentMem: BetaMemory) => {
-        val subjectTokens = parentMem.tokenIndex(subjectVariable).get(assertion.subject).getOrElse(Set.empty)
+        val subjectTokens = parentMem.tokenIndex(subjectVariable).getOrElse(assertion.subject, Set.empty)
         if (subjectTokens.nonEmpty)
-          (subjectTokens.intersect(parentMem.tokenIndex(targetVariable).get(assertion.target).getOrElse(Set.empty))).toList
+          subjectTokens.intersect(parentMem.tokenIndex(targetVariable).getOrElse(assertion.target, Set.empty)).toList
         else Nil
       }
-    case (subjectVariable: Variable, targetVariable: Variable) if parentBoundVariables(subjectVariable) =>
-      (assertion: RoleAssertion, parentMem: BetaMemory) => parentMem.tokenIndex(subjectVariable).get(assertion.subject).getOrElse(Set.empty).toList.map(t => t.extend(makeBindings(assertion)))
+    case (subjectVariable: Variable, _: Variable) if parentBoundVariables(subjectVariable) =>
+      (assertion: RoleAssertion, parentMem: BetaMemory) => parentMem.tokenIndex(subjectVariable).getOrElse(assertion.subject, Set.empty).toList.map(t => t.extend(makeBindings(assertion)))
 
-    case (subjectVariable: Variable, targetVariable: Variable) if parentBoundVariables(targetVariable) =>
-      (assertion: RoleAssertion, parentMem: BetaMemory) => parentMem.tokenIndex(targetVariable).get(assertion.target).getOrElse(Set.empty).toList.map(t => t.extend(makeBindings(assertion)))
+    case (_: Variable, targetVariable: Variable) if parentBoundVariables(targetVariable) =>
+      (assertion: RoleAssertion, parentMem: BetaMemory) => parentMem.tokenIndex(targetVariable).getOrElse(assertion.target, Set.empty).toList.map(t => t.extend(makeBindings(assertion)))
 
     case (subjectVariable: Variable, individualArg: Individual) if parentBoundVariables(subjectVariable) =>
       (assertion: RoleAssertion, parentMem: BetaMemory) => {
         if (individualArg == assertion.target)
-          parentMem.tokenIndex(subjectVariable).get(assertion.subject).getOrElse(Set.empty).toList.map(t => t.extend(makeBindings(assertion)))
+          parentMem.tokenIndex(subjectVariable).getOrElse(assertion.subject, Set.empty).toList.map(t => t.extend(makeBindings(assertion)))
         else Nil
       }
     case (individualArg: Individual, targetVariable: Variable) if parentBoundVariables(targetVariable) =>
       (assertion: RoleAssertion, parentMem: BetaMemory) => {
         if (individualArg == assertion.subject)
-          parentMem.tokenIndex(targetVariable).get(assertion.target).getOrElse(Set.empty).toList.map(t => t.extend(makeBindings(assertion)))
+          parentMem.tokenIndex(targetVariable).getOrElse(assertion.target, Set.empty).toList.map(t => t.extend(makeBindings(assertion)))
         else Nil
       }
     case (individualSubject: Individual, individualTarget: Individual) =>
@@ -193,18 +193,18 @@ final case class RoleAtomJoinNode(atom: RoleAtom, children: List[BetaNode], spec
   def findAssertionsForToken: (Token, RoleAlphaMemory) => List[RoleAssertion] = {
     (atom.subject, atom.target) match {
 
-      case (subjectVariable: Variable, targetVariable: Variable) if (parentBoundVariables(subjectVariable) && parentBoundVariables(targetVariable)) =>
+      case (subjectVariable: Variable, targetVariable: Variable) if parentBoundVariables(subjectVariable) && parentBoundVariables(targetVariable) =>
         (token: Token, alphaMem: RoleAlphaMemory) => {
           val subjectAssertions = alphaMem.assertionsBySubject.getOrElse(token.bindings(subjectVariable), Nil)
           if (subjectAssertions.nonEmpty)
             subjectAssertions.intersect(alphaMem.assertionsByTarget.getOrElse(token.bindings(targetVariable), Nil))
           else Nil
         }
-      case (subjectVariable: Variable, targetVariable: Variable) if parentBoundVariables(subjectVariable) =>
+      case (subjectVariable: Variable, _: Variable) if parentBoundVariables(subjectVariable) =>
         (token: Token, alphaMem: RoleAlphaMemory) =>
           alphaMem.assertionsBySubject.getOrElse(token.bindings(subjectVariable), Nil)
 
-      case (subjectVariable: Variable, targetVariable: Variable) if parentBoundVariables(targetVariable) =>
+      case (_: Variable, targetVariable: Variable) if parentBoundVariables(targetVariable) =>
         (token: Token, alphaMem: RoleAlphaMemory) =>
           alphaMem.assertionsByTarget.getOrElse(token.bindings(targetVariable), Nil)
 
@@ -224,19 +224,19 @@ final case class RoleAtomJoinNode(atom: RoleAtom, children: List[BetaNode], spec
           else Nil
         }
 
-      case (subjectVariable: Variable, individualArg: Individual) =>
-        (token: Token, alphaMem: RoleAlphaMemory) =>
+      case (_: Variable, individualArg: Individual) =>
+        (_: Token, alphaMem: RoleAlphaMemory) =>
           alphaMem.assertionsByTarget.getOrElse(individualArg, Nil)
 
-      case (individualArg: Individual, targetVariable: Variable) =>
-        (token: Token, alphaMem: RoleAlphaMemory) =>
+      case (individualArg: Individual, _: Variable) =>
+        (_: Token, alphaMem: RoleAlphaMemory) =>
           alphaMem.assertionsBySubject.getOrElse(individualArg, Nil)
 
       case (individualSubject: Individual, individualTarget: Individual) =>
-        (token: Token, alphaMem: RoleAlphaMemory) =>
+        (_: Token, alphaMem: RoleAlphaMemory) =>
           alphaMem.assertionsBySubject.getOrElse(individualSubject, Nil).filter(_.target == individualTarget)
 
-      case (_, _) => (token: Token, alphaMem: RoleAlphaMemory) => alphaMem.assertions
+      case (_, _) => (_: Token, alphaMem: RoleAlphaMemory) => alphaMem.assertions
 
     }
   }
