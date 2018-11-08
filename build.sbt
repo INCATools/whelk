@@ -47,7 +47,7 @@ libraryDependencies ++= {
     "org.semanticweb.elk"         %  "elk-owlapi"             % "0.4.3"     % Test,
     "net.sourceforge.owlapi"      % "org.semanticweb.hermit"  % "1.4.0.432" % Test,
     "net.sourceforge.owlapi"      % "jfact"                   % "4.0.4"     % Test,
-    "com.lihaoyi"                 %% "utest"                  % "0.6.3"     % Test
+    "com.lihaoyi"                 %% "utest"                  % "0.6.6"     % Test
   )
 }
 
