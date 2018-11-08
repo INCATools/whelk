@@ -45,7 +45,7 @@ libraryDependencies ++= {
 //    "ch.qos.logback"              %  "logback-classic"        % "1.2.3",
 //    "org.codehaus.groovy"         %  "groovy-all"             % "2.4.6",
     "org.semanticweb.elk"         %  "elk-owlapi"             % "0.4.3"     % Test,
-    "net.sourceforge.owlapi"      % "org.semanticweb.hermit"  % "1.4.0.432" % Test,
+    "net.sourceforge.owlapi"      % "org.semanticweb.hermit"  % "1.4.3.517" % Test,
     "net.sourceforge.owlapi"      % "jfact"                   % "4.0.4"     % Test,
     "com.lihaoyi"                 %% "utest"                  % "0.6.3"     % Test
   )
