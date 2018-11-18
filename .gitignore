@@ -2,6 +2,8 @@
 .classpath
 .project
 .settings
+.idea
+.cache-tests
 bin
 catalog-v001.xml
 project/project
