@@ -39,7 +39,7 @@ fork in Test := true
 libraryDependencies ++= {
   Seq(
     "org.scalaz"                  %% "scalaz-core"            % "7.2.27",
-    "net.sourceforge.owlapi"      %  "owlapi-distribution"    % "4.5.7",
+    "net.sourceforge.owlapi"      %  "owlapi-distribution"    % "5.1.9",
     "org.phenoscape"              %% "scowl"                  % "1.3.1",
 //    "com.typesafe.scala-logging"  %% "scala-logging"          % "3.9.0",
 //    "ch.qos.logback"              %  "logback-classic"        % "1.2.3",
