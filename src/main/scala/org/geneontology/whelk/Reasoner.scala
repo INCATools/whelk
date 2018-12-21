@@ -272,7 +272,7 @@ object Reasoner {
     var newSubclassesAndConjunctions: List[(Concept, Conjunction)] = Nil
     for {
       conjunction <- newNegativeConjunctions
-      cs <- reasoner.closureSubsBySuperclass.get(conjunction.right).toIterable
+      cs = reasoner.closureSubsBySuperclass.getOrElse(conjunction.right, Set.empty)
       c <- cs
     } {
       newSubclassesAndConjunctions = (c -> conjunction) :: newSubclassesAndConjunctions
@@ -287,8 +287,8 @@ object Reasoner {
   private def `R+⨅b-right`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = {
     var conjunctionsBySubclassesOfRightOperand = reasoner.conjunctionsBySubclassesOfRightOperand
     var newSubclassesAndConjunctions: List[(Concept, Conjunction)] = Nil
+    val conjunctions = reasoner.assertedNegConjsByOperandRight.getOrElse(ci.superclass, Nil)
     for {
-      conjunctions <- reasoner.assertedNegConjsByOperandRight.get(ci.superclass).toIterable
       conjunction <- conjunctions
     } {
       newSubclassesAndConjunctions = (ci.subclass -> conjunction) :: newSubclassesAndConjunctions
@@ -304,7 +304,7 @@ object Reasoner {
     var todo = reasoner.todo
     for {
       (c, conjunction) <- subclassesAndConjunctions
-      subclasses <- reasoner.closureSubsBySuperclass.get(conjunction.left)
+      subclasses = reasoner.closureSubsBySuperclass.getOrElse(conjunction.left, Set.empty)
       if subclasses(c)
     } todo = `Sub+`(ConceptInclusion(c, conjunction)) :: todo
     reasoner.copy(todo = todo)
@@ -312,9 +312,9 @@ object Reasoner {
 
   private def `R+⨅right`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = {
     var todo = reasoner.todo
+    val conjunctionsByLeft = reasoner.conjunctionsBySubclassesOfRightOperand.getOrElse(ci.subclass, Map.empty)
+    val conjunctions = conjunctionsByLeft.getOrElse(ci.superclass, Set.empty)
     for {
-      conjunctionsByLeft <- reasoner.conjunctionsBySubclassesOfRightOperand.get(ci.subclass)
-      conjunctions <- conjunctionsByLeft.get(ci.superclass)
       conjunction <- conjunctions
     } todo = `Sub+`(ConceptInclusion(ci.subclass, conjunction)) :: todo
     reasoner.copy(todo = todo)
@@ -339,8 +339,7 @@ object Reasoner {
     var propagations = reasoner.propagations
     for {
       er <- newNegativeExistentials
-      subclasses <- reasoner.closureSubsBySuperclass.get(er.concept).toIterable
-      subclass <- subclasses
+      subclass <- reasoner.closureSubsBySuperclass.getOrElse(er.concept, Set.empty)
     } {
       newPropagations = (subclass, er) :: newPropagations
       val current = propagations.getOrElse(subclass, Map.empty)
@@ -353,8 +352,8 @@ object Reasoner {
   private def `R+∃b-right`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = { //speed up
     var newPropagations: List[(Concept, ExistentialRestriction)] = Nil
     var propagations = reasoner.propagations
+    val ers = reasoner.negExistsMapByConcept.getOrElse(ci.superclass, Set.empty)
     for {
-      ers <- reasoner.negExistsMapByConcept.get(ci.superclass).toIterable
       er <- ers
     } {
       newPropagations = (ci.subclass, er) :: newPropagations
@@ -379,11 +378,10 @@ object Reasoner {
 
   private def `R+∃right`(link: Link, reasoner: ReasonerState): ReasonerState = {
     var todo = reasoner.todo
+    val roleToER = reasoner.propagations.getOrElse(link.target, Map.empty)
     for {
-      roleToER <- reasoner.propagations.get(link.target).toIterable
       s <- reasoner.hier.getOrElse(link.role, Set.empty)
-      fs <- roleToER.get(s)
-      f <- fs
+      f <- roleToER.getOrElse(s, Nil)
     } todo = `Sub+`(ConceptInclusion(link.subject, f)) :: todo
     reasoner.copy(todo = todo)
   }
@@ -392,9 +390,8 @@ object Reasoner {
     var todo = reasoner.todo
     for {
       (r1, es) <- reasoner.linksByTarget.getOrElse(link.subject, Map.empty)
-      r1s <- reasoner.hierComps.get(r1)
-      ss <- r1s.get(link.role)
-      s <- ss
+      r1s = reasoner.hierComps.getOrElse(r1, Map.empty)
+      s <- r1s.getOrElse(link.role, Nil)
       e <- es
     } todo = Link(e, s, link.target) :: todo
     reasoner.copy(todo = todo)
@@ -405,8 +402,7 @@ object Reasoner {
     val r2s = reasoner.hierComps.getOrElse(link.role, Map.empty)
     for {
       (r2, targets) <- reasoner.linksBySubject.getOrElse(link.target, Map.empty)
-      ss <- r2s.get(r2)
-      s <- ss
+      s <- r2s.getOrElse(r2, Nil)
       d <- targets
     } todo = Link(link.subject, s, d) :: todo
     reasoner.copy(todo = todo)
