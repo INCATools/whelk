@@ -40,7 +40,7 @@ libraryDependencies ++= {
   Seq(
     "org.scalaz"                  %% "scalaz-core"            % "7.2.27",
     "net.sourceforge.owlapi"      %  "owlapi-distribution"    % "4.5.7",
-    "org.phenoscape"              %% "scowl"                  % "1.3.1",
+    "org.phenoscape"              %% "scowl"                  % "1.3.2",
 //    "com.typesafe.scala-logging"  %% "scala-logging"          % "3.9.0",
 //    "ch.qos.logback"              %  "logback-classic"        % "1.2.3",
 //    "org.codehaus.groovy"         %  "groovy-all"             % "2.4.6",

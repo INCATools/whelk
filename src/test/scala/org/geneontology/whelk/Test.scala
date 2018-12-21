@@ -23,6 +23,7 @@ object Test extends App {
 
   //val reasoner = Reasoner.prepare(Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create("http://purl.obolibrary.org/obo/pato.owl"))))
   val ontology = OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File("uberon-go-cl-ro.ofn")))
+  //val ontology = OWLManager.createOWLOntologyManager().loadOntology(IRI.create("http://purl.obolibrary.org/obo/cl/cl-base.owl"))
   val uberonAxioms = Bridge.ontologyToAxioms(ontology)
   //val goAxioms = Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File("../../Source/obo-asserted/go.owl"))))
   //val reasoner = Reasoner.prepare(Bridge.ontologyToAxioms(OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File("skeletons.ofn")))))
@@ -35,6 +36,8 @@ object Test extends App {
 
   //done.subs.foreach(println)
   println("================")
+  //done.closureSubsBySubclass.mapValues(_.size).foreach(println)
+  //println(s"Size: ${done.closureSubsBySubclass.size}")
 
   val query = ConceptInclusion(
     Conjunction(
@@ -43,7 +46,7 @@ object Test extends App {
     AtomicConcept("http://example.org/muscle_of_head"))
 
   val newDone = time("Classified query in")(Reasoner.assert(gocamAxioms, done))
-  newDone.classAssertions.foreach(println)
+  //newDone.classAssertions.foreach(println)
   println
 
   val RegeneratingLimbFin = AtomicConcept("http://purl.obolibrary.org/obo/UBERON_2001269")
