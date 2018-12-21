@@ -1,29 +1,27 @@
 package org.geneontology.whelk
 
 import BuiltIn._
-import scalaz._
-import scalaz.Scalaz._
 import scala.annotation.tailrec
 
 final case class ReasonerState(
-  hier:                                   Map[Role, Set[Role]], // initial
-  hierComps:                              Map[Role, Map[Role, List[Role]]], // initial
-  assertions:                             List[ConceptInclusion],
-  todo:                                   List[QueueExpression],
-  topOccursNegatively:                    Boolean,
-  inits:                                  Set[Concept], // closure
-  assertedConceptInclusionsBySubclass:    Map[Concept, List[ConceptInclusion]],
-  closureSubsBySuperclass:                Map[Concept, Set[Concept]],
-  closureSubsBySubclass:                  Map[Concept, Set[Concept]],
-  assertedNegConjs:                       Set[Conjunction],
-  assertedNegConjsByOperandRight:         Map[Concept, List[Conjunction]],
-  conjunctionsBySubclassesOfRightOperand: Map[Concept, Map[Concept, Set[Conjunction]]], // Map[subclassOfRightOperand, Map[leftOperand, Conjunction]]
-  linksBySubject:                         Map[Concept, Map[Role, Set[Concept]]],
-  linksByTarget:                          Map[Concept, Map[Role, List[Concept]]],
-  negExistsMapByConcept:                  Map[Concept, Set[ExistentialRestriction]],
-  propagations:                           Map[Concept, Map[Role, List[ExistentialRestriction]]],
-  ruleEngine:                             RuleEngine,
-  wm:                                     WorkingMemory) {
+                                hier: Map[Role, Set[Role]], // initial
+                                hierComps: Map[Role, Map[Role, List[Role]]], // initial
+                                assertions: List[ConceptInclusion],
+                                todo: List[QueueExpression],
+                                topOccursNegatively: Boolean,
+                                inits: Set[Concept], // closure
+                                assertedConceptInclusionsBySubclass: Map[Concept, List[ConceptInclusion]],
+                                closureSubsBySuperclass: Map[Concept, Set[Concept]],
+                                closureSubsBySubclass: Map[Concept, Set[Concept]],
+                                assertedNegConjs: Set[Conjunction],
+                                assertedNegConjsByOperandRight: Map[Concept, List[Conjunction]],
+                                conjunctionsBySubclassesOfRightOperand: Map[Concept, Map[Concept, Set[Conjunction]]], // Map[subclassOfRightOperand, Map[leftOperand, Conjunction]]
+                                linksBySubject: Map[Concept, Map[Role, Set[Concept]]],
+                                linksByTarget: Map[Concept, Map[Role, List[Concept]]],
+                                negExistsMapByConcept: Map[Concept, Set[ExistentialRestriction]],
+                                propagations: Map[Concept, Map[Role, List[ExistentialRestriction]]],
+                                ruleEngine: RuleEngine,
+                                wm: WorkingMemory) {
 
   def subs: Set[ConceptInclusion] = closureSubsBySuperclass.flatMap {
     case (superclass, subclasses) =>
@@ -74,12 +72,13 @@ final case class ReasonerState(
           @tailrec
           def loop(currentDirectSubs: List[AtomicConcept], isDirect: Boolean, remove: List[AtomicConcept], add: List[AtomicConcept]): (List[AtomicConcept], List[AtomicConcept]) =
             (currentDirectSubs, isDirect, remove, add) match {
-              case (Nil, true, removes, adds) => (removes, subsumer :: adds)
-              case (Nil, false, removes, adds) => (removes, adds)
-              case (other :: _, _, removes, adds) if subsumer == tautology || subsumerFunction(other)(subsumer) => (removes, adds)
+              case (Nil, true, removes, adds)                                                                        => (removes, subsumer :: adds)
+              case (Nil, false, removes, adds)                                                                       => (removes, adds)
+              case (other :: _, _, removes, adds) if subsumer == tautology || subsumerFunction(other)(subsumer)      => (removes, adds)
               case (other :: rest, direct, removes, adds) if other == tautology || subsumerFunction(subsumer)(other) => loop(rest, direct, other :: removes, adds)
-              case (_ :: rest, direct, removes, adds) => loop(rest, direct, removes, adds)
+              case (_ :: rest, direct, removes, adds)                                                                => loop(rest, direct, removes, adds)
             }
+
           val (remove, add) = loop(directSubsumers.toList, true, Nil, Nil)
           (equivalents, (directSubsumers -- remove) ++ add)
         }
@@ -97,7 +96,9 @@ object ReasonerState {
 object Reasoner {
 
   def assert(axioms: Set[Axiom]): ReasonerState = {
-    import scalaz.syntax.semigroup._
+    import scalaz._
+    import scalaz.Scalaz._
+    //import scalaz.syntax.semigroup._
     val allRoles = axioms.flatMap(_.signature).collect { case role: Role => role }
     val allRoleInclusions = axioms.collect { case ri: RoleInclusion => ri }
     val hier: Map[Role, Set[Role]] = saturateRoles(allRoleInclusions) |+| allRoles.map(r => r -> Set(r)).toMap
@@ -145,10 +146,10 @@ object Reasoner {
 
   private def process(expression: QueueExpression, reasoner: ReasonerState): ReasonerState = {
     expression match {
-      case concept: Concept             => processConcept(concept, reasoner)
+      case link: Link                   => processLink(link, reasoner)
       case ci: ConceptInclusion         => processConceptInclusion(ci, reasoner)
       case `Sub+`(ci: ConceptInclusion) => processSubPlus(ci, reasoner)
-      case link: Link                   => processLink(link, reasoner)
+      case concept: Concept             => processConcept(concept, reasoner)
     }
   }
 
@@ -167,7 +168,7 @@ object Reasoner {
       val updatedReasoner = `R⊑right`(ci, `R+∃b-right`(ci, `R-∃`(ci, `R+⨅b-right`(ci, `R+⨅right`(ci, `R-⨅`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass, closureSubsBySubclass = closureSubsBySubclass))))))))
       ci match {
         case ConceptInclusion(Nominal(ind), concept) => reasoner.ruleEngine.processConceptAssertion(ConceptAssertion(concept, ind), updatedReasoner)
-        case _ => updatedReasoner
+        case _                                       => updatedReasoner
       }
     }
   }
@@ -182,7 +183,7 @@ object Reasoner {
       val updatedReasoner = `R⊑right`(ci, `R+∃b-right`(ci, `R+⨅b-right`(ci, `R+⨅right`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass, closureSubsBySubclass = closureSubsBySubclass))))))
       ci match {
         case ConceptInclusion(Nominal(ind), concept) => updatedReasoner.ruleEngine.processConceptAssertion(ConceptAssertion(concept, ind), updatedReasoner)
-        case _ => updatedReasoner
+        case _                                       => updatedReasoner
       }
     }
   }
@@ -193,7 +194,7 @@ object Reasoner {
     val targetsSet = rolesToTargets.getOrElse(role, Set.empty[Concept])
     if (targetsSet(target)) reasoner else {
       val updatedTargetsSet = targetsSet + target
-      val updatedRolesToTargets = rolesToTargets.updated(link.role, updatedTargetsSet)
+      val updatedRolesToTargets = rolesToTargets.updated(role, updatedTargetsSet)
       val linksBySubject = reasoner.linksBySubject.updated(subject, updatedRolesToTargets)
       val rolesToSubjects = reasoner.linksByTarget.getOrElse(target, Map.empty)
       val subjects = rolesToSubjects.getOrElse(role, Nil)
@@ -203,7 +204,7 @@ object Reasoner {
       val updatedReasoner = `R⤳`(link, `R∘left`(link, `R∘right`(link, `R+∃right`(link, `R⊥right`(link, reasoner.copy(linksBySubject = linksBySubject, linksByTarget = linksByTarget))))))
       link match {
         case Link(Nominal(subjectInd), aRole, Nominal(targetInd)) => updatedReasoner.ruleEngine.processRoleAssertion(RoleAssertion(aRole, subjectInd, targetInd), updatedReasoner)
-        case _ => updatedReasoner
+        case _                                                    => updatedReasoner
       }
     }
   }
@@ -253,7 +254,7 @@ object Reasoner {
 
   private def `R-⨅`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = ci match {
     case ConceptInclusion(sub, Conjunction(left, right)) => reasoner.copy(todo = ConceptInclusion(sub, left) :: ConceptInclusion(sub, right) :: reasoner.todo)
-    case _ => reasoner
+    case _                                               => reasoner
   }
 
   private def `R+⨅a`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = {
@@ -322,7 +323,7 @@ object Reasoner {
 
   private def `R-∃`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = ci match {
     case ConceptInclusion(c, ExistentialRestriction(role, filler)) => reasoner.copy(todo = Link(c, role, filler) :: reasoner.todo)
-    case _ => reasoner
+    case _                                                         => reasoner
   }
 
   private def `R+∃a`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = {
@@ -416,10 +417,12 @@ object Reasoner {
 
   private def saturateRoles(roleInclusions: Set[RoleInclusion]): Map[Role, Set[Role]] = { //FIXME can do this better?
     val subToSuper = roleInclusions.groupBy(_.subproperty).map { case (sub, ri) => sub -> ri.map(_.superproperty) }
+
     def allSupers(role: Role): Set[Role] = for {
       superProp <- subToSuper.getOrElse(role, Set.empty)
       superSuperProp <- allSupers(superProp) + superProp
     } yield superSuperProp
+
     subToSuper.keys.map(role => role -> allSupers(role)).toMap
   }
 
