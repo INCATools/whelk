@@ -402,9 +402,9 @@ object Reasoner {
 
   private def `R∘right`(link: Link, reasoner: ReasonerState): ReasonerState = {
     var todo = reasoner.todo
+    val r2s = reasoner.hierComps.getOrElse(link.role, Map.empty)
     for {
       (r2, targets) <- reasoner.linksBySubject.getOrElse(link.target, Map.empty)
-      r2s <- reasoner.hierComps.get(link.role)
       ss <- r2s.get(r2)
       s <- ss
       d <- targets
