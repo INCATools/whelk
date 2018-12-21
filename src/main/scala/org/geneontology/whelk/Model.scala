@@ -16,6 +16,12 @@ final case class Role(id: String) extends Entity {
 
 }
 
+object Role {
+
+  def apply(id: String): Role = new Role(id.intern())
+
+}
+
 sealed trait Concept extends QueueExpression with HasSignature {
 
   def conceptSignature: Set[Concept]
@@ -33,6 +39,12 @@ final case class AtomicConcept(id: String) extends Concept with Entity {
   def isAnonymous: Boolean = false
 
   override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
+
+}
+
+object AtomicConcept {
+
+  def apply(id: String): AtomicConcept = new AtomicConcept(id.intern())
 
 }
 
