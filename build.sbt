@@ -38,16 +38,13 @@ fork in Test := true
 
 libraryDependencies ++= {
   Seq(
-    "org.scalaz"                  %% "scalaz-core"            % "7.2.27",
-    "net.sourceforge.owlapi"      %  "owlapi-distribution"    % "4.5.7",
-    "org.phenoscape"              %% "scowl"                  % "1.3.2",
-//    "com.typesafe.scala-logging"  %% "scala-logging"          % "3.9.0",
-//    "ch.qos.logback"              %  "logback-classic"        % "1.2.3",
-//    "org.codehaus.groovy"         %  "groovy-all"             % "2.4.6",
-    "org.semanticweb.elk"         %  "elk-owlapi"             % "0.4.3"     % Test,
-    "net.sourceforge.owlapi"      % "org.semanticweb.hermit"  % "1.4.0.432" % Test,
-    "net.sourceforge.owlapi"      % "jfact"                   % "4.0.4"     % Test,
-    "com.lihaoyi"                 %% "utest"                  % "0.6.6"     % Test
+    "org.scalaz"             %% "scalaz-core"            % "7.2.27",
+    "net.sourceforge.owlapi" %  "owlapi-distribution"    % "4.5.7",
+    "org.phenoscape"         %% "scowl"                  % "1.3.2",
+    "org.semanticweb.elk"    %  "elk-owlapi"             % "0.4.3"     % Test,
+    "net.sourceforge.owlapi" %  "org.semanticweb.hermit" % "1.4.0.432" % Test,
+    "net.sourceforge.owlapi" %  "jfact"                  % "4.0.4"     % Test,
+    "com.lihaoyi"            %% "utest"                  % "0.6.6"     % Test
   )
 }
 
