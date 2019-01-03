@@ -52,16 +52,16 @@ final case class ReasonerState(
   //FIXME clarify how these methods differ... names are confusing
 
   def directlySubsumes(concept: Concept): (Set[AtomicConcept], Set[AtomicConcept]) =
-    direct(concept, closureSubsBySuperclass.getOrElse(concept, Set.empty) + Bottom, closureSubsBySuperclass.withDefaultValue(Set.empty), Bottom)
+    direct(concept, closureSubsBySuperclass.getOrElse(concept, Set.empty) + Bottom, closureSubsBySuperclass.withDefaultValue(Set.empty[Concept]), Bottom)
 
   def directlySubsumedBy(concept: Concept): (Set[AtomicConcept], Set[AtomicConcept]) =
-    direct(concept, closureSubsBySubclass.getOrElse(concept, Set.empty) + Top, closureSubsBySubclass.withDefaultValue(Set.empty), Top)
+    direct(concept, closureSubsBySubclass.getOrElse(concept, Set.empty) + Top, closureSubsBySubclass.withDefaultValue(Set.empty[Concept]), Top)
 
   //  def directSubsumes(concept: Concept, allSubsConcepts: Set[Concept]): (Set[AtomicConcept], Set[AtomicConcept]) =
   //    direct(concept, allSubsConcepts + Bottom, closureSubsBySuperclass.withDefaultValue(Set.empty))
 
   def directSubsumers(concept: Concept, allSubsConcepts: Set[Concept]): (Set[AtomicConcept], Set[AtomicConcept]) =
-    direct(concept, allSubsConcepts + Top, closureSubsBySubclass.withDefaultValue(Set.empty), Top)
+    direct(concept, allSubsConcepts + Top, closureSubsBySubclass.withDefaultValue(Set.empty[Concept]), Top)
 
   def direct(concept: Concept, allSubsConcepts: Set[Concept], subsumerFunction: Concept => Concept => Boolean, tautology: Concept): (Set[AtomicConcept], Set[AtomicConcept]) = {
     val allSubsumers = allSubsConcepts.iterator.collect { case ac: AtomicConcept => ac }.filterNot(_ == concept)
@@ -96,9 +96,7 @@ object ReasonerState {
 object Reasoner {
 
   def assert(axioms: Set[Axiom]): ReasonerState = {
-    import scalaz._
     import scalaz.Scalaz._
-    //import scalaz.syntax.semigroup._
     val allRoles = axioms.flatMap(_.signature).collect { case role: Role => role }
     val allRoleInclusions = axioms.collect { case ri: RoleInclusion => ri }
     val hier: Map[Role, Set[Role]] = saturateRoles(allRoleInclusions) |+| allRoles.map(r => r -> Set(r)).toMap
