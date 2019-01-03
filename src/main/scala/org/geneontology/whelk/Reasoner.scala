@@ -127,7 +127,7 @@ object Reasoner {
   }
 
   @tailrec
-  private def computeClosure(reasoner: ReasonerState): ReasonerState = {
+  private[this] def computeClosure(reasoner: ReasonerState): ReasonerState = {
     if (reasoner.assertions.nonEmpty) {
       val item :: todoAssertions = reasoner.assertions
       computeClosure(processAssertedConceptInclusion(item, reasoner.copy(assertions = todoAssertions)))
@@ -137,17 +137,17 @@ object Reasoner {
     } else reasoner
   }
 
-  private def processAssertedConceptInclusion(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = {
+  private[this] def processAssertedConceptInclusion(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = {
     val ConceptInclusion(subclass, superclass) = ci
     val updated = reasoner.assertedConceptInclusionsBySubclass.updated(ci.subclass, ci :: reasoner.assertedConceptInclusionsBySubclass.getOrElse(ci.subclass, Nil))
     `R⊑left`(subclass, superclass, `R+∃a`(subclass, superclass, `R+⨅a`(subclass, superclass, `R⊤left`(subclass, superclass, reasoner.copy(assertedConceptInclusionsBySubclass = updated)))))
   }
 
-  private def processConcept(concept: Concept, reasoner: ReasonerState): ReasonerState =
+  private[this] def processConcept(concept: Concept, reasoner: ReasonerState): ReasonerState =
     if (reasoner.inits(concept)) reasoner else
       `R⊤right`(concept, R0(concept, reasoner.copy(inits = reasoner.inits + concept)))
 
-  def processConceptInclusion(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState = {
+  private[whelk] def processConceptInclusion(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState = {
     val subs = reasoner.closureSubsBySuperclass.getOrElse(superclass, Set.empty)
     if (subs(subclass)) reasoner else {
       val closureSubsBySuperclass = reasoner.closureSubsBySuperclass.updated(superclass, subs + subclass)
@@ -161,7 +161,7 @@ object Reasoner {
     }
   }
 
-  private def processSubPlus(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState = {
+  private[this] def processSubPlus(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState = {
     val subs = reasoner.closureSubsBySuperclass.getOrElse(superclass, Set.empty)
     if (subs(subclass)) reasoner else {
       val closureSubsBySuperclass = reasoner.closureSubsBySuperclass.updated(superclass, subs + subclass)
@@ -175,7 +175,7 @@ object Reasoner {
     }
   }
 
-  def processLink(subject: Concept, role: Role, target: Concept, reasoner: ReasonerState): ReasonerState = {
+  private[whelk] def processLink(subject: Concept, role: Role, target: Concept, reasoner: ReasonerState): ReasonerState = {
     val rolesToTargets = reasoner.linksBySubject.getOrElse(subject, Map.empty)
     val targetsSet = rolesToTargets.getOrElse(role, Set.empty[Concept])
     if (targetsSet(target)) reasoner else {
@@ -198,27 +198,27 @@ object Reasoner {
     }
   }
 
-  private def R0(concept: Concept, reasoner: ReasonerState): ReasonerState =
+  private[this] def R0(concept: Concept, reasoner: ReasonerState): ReasonerState =
     processConceptInclusion(concept, concept, reasoner)
 
-  private def `R⊤left`(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState =
+  private[this] def `R⊤left`(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState =
     if (subclass.signature(Top)) reasoner.copy(topOccursNegatively = true) else reasoner
 
-  private def `R⊤right`(concept: Concept, reasoner: ReasonerState): ReasonerState =
+  private[this] def `R⊤right`(concept: Concept, reasoner: ReasonerState): ReasonerState =
     if (reasoner.topOccursNegatively) processConceptInclusion(concept, Top, reasoner)
     else reasoner
 
-  private def `R⊑left`(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState =
+  private[this] def `R⊑left`(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState =
     reasoner.closureSubsBySuperclass.getOrElse(subclass, Set.empty).foldLeft(reasoner) { (state, other) =>
       processConceptInclusion(other, superclass, state)
     }
 
-  private def `R⊑right`(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState =
+  private[this] def `R⊑right`(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState =
     reasoner.assertedConceptInclusionsBySubclass.getOrElse(superclass, Nil).foldLeft(reasoner) { (state, other) =>
       processConceptInclusion(subclass, other.superclass, state)
     }
 
-  private def `R⊥left`(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState =
+  private[this] def `R⊥left`(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState =
     if (superclass == Bottom) {
       reasoner.linksByTarget.getOrElse(subclass, Map.empty).foldLeft(reasoner) { case (state1, (_, subjects)) =>
         subjects.foldLeft(state1) { (state2, subject) =>
@@ -227,19 +227,19 @@ object Reasoner {
       }
     } else reasoner
 
-  private def `R⊥right`(subject: Concept, role: Role, target: Concept, reasoner: ReasonerState): ReasonerState =
+  private[this] def `R⊥right`(subject: Concept, role: Role, target: Concept, reasoner: ReasonerState): ReasonerState =
     if (reasoner.closureSubsBySuperclass(Bottom)(target))
       processConceptInclusion(subject, Bottom, reasoner)
     else reasoner
 
-  private def `R-⨅`(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState = superclass match {
+  private[this] def `R-⨅`(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState = superclass match {
     case Conjunction(left, right) =>
       processConceptInclusion(subclass, left,
         processConceptInclusion(subclass, right, reasoner))
     case _                        => reasoner
   }
 
-  private def `R+⨅a`(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState = {
+  private[this] def `R+⨅a`(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState = {
     val newNegativeConjunctions = subclass.conceptSignature.collect { case conj: Conjunction => conj }.filterNot(reasoner.assertedNegConjs)
     val newAssertedNegConjs = reasoner.assertedNegConjs ++ newNegativeConjunctions
     val newNegConjsByOperandRight = newNegativeConjunctions.foldLeft(reasoner.assertedNegConjsByOperandRight) {
@@ -250,7 +250,7 @@ object Reasoner {
     `R+⨅b-left`(newNegativeConjunctions, reasoner.copy(assertedNegConjs = newAssertedNegConjs, assertedNegConjsByOperandRight = newNegConjsByOperandRight))
   }
 
-  private def `R+⨅b-left`(newNegativeConjunctions: Iterable[Conjunction], reasoner: ReasonerState): ReasonerState = {
+  private[this] def `R+⨅b-left`(newNegativeConjunctions: Iterable[Conjunction], reasoner: ReasonerState): ReasonerState = {
     var conjunctionsBySubclassesOfRightOperand = reasoner.conjunctionsBySubclassesOfRightOperand
     var newSubclassesAndConjunctions: List[(Concept, Conjunction)] = Nil
     for {
@@ -267,7 +267,7 @@ object Reasoner {
     `R+⨅left`(newSubclassesAndConjunctions, reasoner.copy(conjunctionsBySubclassesOfRightOperand = conjunctionsBySubclassesOfRightOperand))
   }
 
-  private def `R+⨅b-right`(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState = {
+  private[this] def `R+⨅b-right`(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState = {
     var conjunctionsBySubclassesOfRightOperand = reasoner.conjunctionsBySubclassesOfRightOperand
     var newSubclassesAndConjunctions: List[(Concept, Conjunction)] = Nil
     val conjunctions = reasoner.assertedNegConjsByOperandRight.getOrElse(superclass, Nil)
@@ -283,7 +283,7 @@ object Reasoner {
     `R+⨅left`(newSubclassesAndConjunctions, reasoner.copy(conjunctionsBySubclassesOfRightOperand = conjunctionsBySubclassesOfRightOperand))
   }
 
-  private def `R+⨅left`(subclassesAndConjunctions: Iterable[(Concept, Conjunction)], reasoner: ReasonerState): ReasonerState = {
+  private[this] def `R+⨅left`(subclassesAndConjunctions: Iterable[(Concept, Conjunction)], reasoner: ReasonerState): ReasonerState = {
     subclassesAndConjunctions.foldLeft(reasoner) { case (state, (c, conjunction)) =>
       val subclasses = reasoner.closureSubsBySuperclass.getOrElse(conjunction.left, Set.empty)
       if (subclasses(c)) processSubPlus(c, conjunction, state)
@@ -291,7 +291,7 @@ object Reasoner {
     }
   }
 
-  private def `R+⨅right`(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState = {
+  private[this] def `R+⨅right`(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState = {
     val conjunctionsByLeft = reasoner.conjunctionsBySubclassesOfRightOperand.getOrElse(subclass, Map.empty)
     val conjunctions = conjunctionsByLeft.getOrElse(superclass, Set.empty)
     conjunctions.foldLeft(reasoner) { (state, conjunction) =>
@@ -299,12 +299,12 @@ object Reasoner {
     }
   }
 
-  private def `R-∃`(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState = superclass match {
+  private[this] def `R-∃`(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState = superclass match {
     case ExistentialRestriction(role, filler) => processLink(subclass, role, filler, reasoner)
     case _                                    => reasoner
   }
 
-  private def `R+∃a`(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState = {
+  private[this] def `R+∃a`(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState = {
     val newNegativeExistentials = subclass.conceptSignature.collect { case er: ExistentialRestriction => er }
     val negExistsMapByConcept = newNegativeExistentials.foldLeft(reasoner.negExistsMapByConcept) { (acc, er) =>
       val updated = acc.getOrElse(er.concept, Set.empty) + er
@@ -313,7 +313,7 @@ object Reasoner {
     `R+∃b-left`(newNegativeExistentials, reasoner.copy(negExistsMapByConcept = negExistsMapByConcept))
   }
 
-  private def `R+∃b-left`(newNegativeExistentials: Iterable[ExistentialRestriction], reasoner: ReasonerState): ReasonerState = {
+  private[this] def `R+∃b-left`(newNegativeExistentials: Iterable[ExistentialRestriction], reasoner: ReasonerState): ReasonerState = {
     var newPropagations: List[(Concept, ExistentialRestriction)] = Nil
     var propagations = reasoner.propagations
     for {
@@ -328,7 +328,7 @@ object Reasoner {
     `R+∃left`(newPropagations, reasoner.copy(propagations = propagations))
   }
 
-  private def `R+∃b-right`(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState = { //speed up
+  private[this] def `R+∃b-right`(subclass: Concept, superclass: Concept, reasoner: ReasonerState): ReasonerState = { //speed up
     var newPropagations: List[(Concept, ExistentialRestriction)] = Nil
     var propagations = reasoner.propagations
     val ers = reasoner.negExistsMapByConcept.getOrElse(superclass, Set.empty)
@@ -343,7 +343,7 @@ object Reasoner {
     `R+∃left`(newPropagations, reasoner.copy(propagations = propagations))
   }
 
-  private def `R+∃left`(newPropagations: Iterable[(Concept, ExistentialRestriction)], reasoner: ReasonerState): ReasonerState = {
+  private[this] def `R+∃left`(newPropagations: Iterable[(Concept, ExistentialRestriction)], reasoner: ReasonerState): ReasonerState = {
     newPropagations.foldLeft(reasoner) { case (state1, (concept, er)) =>
       reasoner.linksByTarget.getOrElse(concept, Map.empty).foldLeft(state1) { case (state2, (role, subjects)) =>
         if (reasoner.hier.getOrElse(role, Set.empty)(er.role))
@@ -355,7 +355,7 @@ object Reasoner {
     }
   }
 
-  private def `R+∃right`(subject: Concept, role: Role, target: Concept, reasoner: ReasonerState): ReasonerState = {
+  private[this] def `R+∃right`(subject: Concept, role: Role, target: Concept, reasoner: ReasonerState): ReasonerState = {
     val roleToER = reasoner.propagations.getOrElse(target, Map.empty)
     reasoner.hier.getOrElse(role, Set.empty).foldLeft(reasoner) { (state1, s) =>
       roleToER.getOrElse(s, Nil).foldLeft(state1) { (state2, f) =>
@@ -364,7 +364,7 @@ object Reasoner {
     }
   }
 
-  private def `R∘left`(subject: Concept, role: Role, target: Concept, reasoner: ReasonerState): ReasonerState = {
+  private[this] def `R∘left`(subject: Concept, role: Role, target: Concept, reasoner: ReasonerState): ReasonerState = {
     reasoner.linksByTarget.getOrElse(subject, Map.empty).foldLeft(reasoner) { case (state1, (r1, es)) =>
       val r1s = reasoner.hierComps.getOrElse(r1, Map.empty)
       r1s.getOrElse(role, Nil).foldLeft(state1) { (state2, s) =>
@@ -375,7 +375,7 @@ object Reasoner {
     }
   }
 
-  private def `R∘right`(subject: Concept, role: Role, target: Concept, reasoner: ReasonerState): ReasonerState = {
+  private[this] def `R∘right`(subject: Concept, role: Role, target: Concept, reasoner: ReasonerState): ReasonerState = {
     val r2s = reasoner.hierComps.getOrElse(role, Map.empty)
     reasoner.linksBySubject.getOrElse(target, Map.empty).foldLeft(reasoner) { case (state1, (r2, targets)) =>
       r2s.getOrElse(r2, Nil).foldLeft(state1) { (state2, s) =>
@@ -386,14 +386,14 @@ object Reasoner {
     }
   }
 
-  private def `R⤳`(subject: Concept, role: Role, target: Concept, reasoner: ReasonerState): ReasonerState =
+  private[this] def `R⤳`(subject: Concept, role: Role, target: Concept, reasoner: ReasonerState): ReasonerState =
     processConcept(target, reasoner)
 
-  private def `R⊔`(d: Disjunction): Set[ConceptInclusion] = d.operands.map(o => ConceptInclusion(o, d))
+  private[this] def `R⊔`(d: Disjunction): Set[ConceptInclusion] = d.operands.map(o => ConceptInclusion(o, d))
 
-  private def `R¬`(c: Complement): Set[ConceptInclusion] = Set(ConceptInclusion(Conjunction(c.concept, c), Bottom))
+  private[this] def `R¬`(c: Complement): Set[ConceptInclusion] = Set(ConceptInclusion(Conjunction(c.concept, c), Bottom))
 
-  private def saturateRoles(roleInclusions: Set[RoleInclusion]): Map[Role, Set[Role]] = { //FIXME can do this better?
+  private[this] def saturateRoles(roleInclusions: Set[RoleInclusion]): Map[Role, Set[Role]] = { //FIXME can do this better?
     val subToSuper = roleInclusions.groupBy(_.subproperty).map { case (sub, ri) => sub -> ri.map(_.superproperty) }
 
     def allSupers(role: Role): Set[Role] = for {
@@ -404,7 +404,7 @@ object Reasoner {
     subToSuper.keys.map(role => role -> allSupers(role)).toMap
   }
 
-  private def indexRoleCompositions(hier: Map[Role, Set[Role]], chains: Set[RoleComposition]): Map[Role, Map[Role, List[Role]]] = {
+  private[this] def indexRoleCompositions(hier: Map[Role, Set[Role]], chains: Set[RoleComposition]): Map[Role, Map[Role, List[Role]]] = {
     val roleComps = chains.groupBy(rc => (rc.first, rc.second)).map {
       case (key, ris) =>
         key -> ris.map(_.superproperty)
