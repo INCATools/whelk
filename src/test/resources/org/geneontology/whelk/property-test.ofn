@@ -1,0 +1,57 @@
+Prefix(:=<http://example.org/propertytest#>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<http://example.org/propertytest>
+
+Declaration(ObjectProperty(:p))
+Declaration(ObjectProperty(:q))
+Declaration(ObjectProperty(:r))
+Declaration(ObjectProperty(:s))
+Declaration(ObjectProperty(:t))
+Declaration(ObjectProperty(:u))
+Declaration(ObjectProperty(:v))
+Declaration(ObjectProperty(:x))
+Declaration(ObjectProperty(:y))
+############################
+#   Object Properties
+############################
+
+# Object Property: :p (:p)
+
+EquivalentObjectProperties(:p :q)
+
+# Object Property: :r (:r)
+
+SubObjectPropertyOf(:r :s)
+
+# Object Property: :s (:s)
+
+SubObjectPropertyOf(:s :r)
+
+# Object Property: :t (:t)
+
+SubObjectPropertyOf(:t :u)
+
+# Object Property: :u (:u)
+
+SubObjectPropertyOf(:u :v)
+
+# Object Property: :v (:v)
+
+SubObjectPropertyOf(:v :t)
+
+# Object Property: :x (:x)
+
+SubObjectPropertyOf(:x :t)
+
+# Object Property: :y (:y)
+
+SubObjectPropertyOf(:y :y)
+
+
+)

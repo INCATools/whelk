@@ -1,19 +1,15 @@
 package org.geneontology.whelk
 
-import utest._
-import org.semanticweb.owlapi.model.OWLOntologyManager
-import org.semanticweb.owlapi.apibinding.OWLManager
 import org.geneontology.whelk.BuiltIn._
-import org.semanticweb.elk.owlapi.ElkReasonerFactory
 import org.phenoscape.scowl._
-import scala.collection.JavaConverters._
 import org.semanticweb.HermiT.ReasonerFactory
-import org.semanticweb.owlapi.util.InferredOntologyGenerator
-import org.semanticweb.owlapi.util.InferredClassAssertionAxiomGenerator
-import org.semanticweb.owlapi.util.InferredPropertyAssertionGenerator
-import org.semanticweb.owlapi.util.InferredAxiomGenerator
+import org.semanticweb.elk.owlapi.ElkReasonerFactory
+import org.semanticweb.owlapi.apibinding.OWLManager
 import org.semanticweb.owlapi.model.parameters.Imports
-import uk.ac.manchester.cs.jfact.JFactFactory
+import org.semanticweb.owlapi.util.{InferredAxiomGenerator, InferredClassAssertionAxiomGenerator, InferredOntologyGenerator, InferredPropertyAssertionGenerator}
+import utest._
+
+import scala.collection.JavaConverters._
 
 object TestInferences extends TestSuite {
 
@@ -21,6 +17,7 @@ object TestInferences extends TestSuite {
 
     "Inferences should match ELK" - {
       "uberon-tiny.ofn" - compareWhelkAndELK()
+      "uberon-tiny-equiv-prop.ofn" - compareWhelkAndELK()
       "skeletons.ofn" - compareWhelkAndELK()
       "part-of-arm.ofn" - compareWhelkAndELK()
       "disjunction.ofn" - compareWhelkAndELK()
@@ -38,7 +35,7 @@ object TestInferences extends TestSuite {
     val done = Reasoner.assert(axioms)
     val namedSubs = done.subs.filter {
       case ConceptInclusion(sub: AtomicConcept, sup: AtomicConcept) if (sub != sup && sub != Bottom && sup != Top) => true
-      case _ => false
+      case _                                                                                                       => false
     }
     val elk = new ElkReasonerFactory().createReasoner(ontology)
     val terms = axioms.collect { case ax: ConceptInclusion => ax }.flatMap(_.signature).collect { case e: AtomicConcept => e }

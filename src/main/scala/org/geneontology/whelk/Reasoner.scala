@@ -396,12 +396,17 @@ object Reasoner {
   private[this] def saturateRoles(roleInclusions: Set[RoleInclusion]): Map[Role, Set[Role]] = { //FIXME can do this better?
     val subToSuper = roleInclusions.groupBy(_.subproperty).map { case (sub, ri) => sub -> ri.map(_.superproperty) }
 
-    def allSupers(role: Role): Set[Role] = for {
-      superProp <- subToSuper.getOrElse(role, Set.empty)
-      superSuperProp <- allSupers(superProp) + superProp
-    } yield superSuperProp
+    // exclude role avoids infinite loop due to cycles
+    def allSupers(role: Role, exclude: Set[Role]): Set[Role] = {
+      val currentExclude = exclude + role
+      for {
+        superProp <- subToSuper.getOrElse(role, Set.empty)
+        if !currentExclude(superProp)
+        superSuperProp <- allSupers(superProp, currentExclude) + superProp
+      } yield superSuperProp
+    }
 
-    subToSuper.keys.map(role => role -> allSupers(role)).toMap
+    subToSuper.keys.map(role => role -> allSupers(role, Set.empty)).toMap
   }
 
   private[this] def indexRoleCompositions(hier: Map[Role, Set[Role]], chains: Set[RoleComposition]): Map[Role, Map[Role, List[Role]]] = {

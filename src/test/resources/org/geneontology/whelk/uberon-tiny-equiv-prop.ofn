@@ -1,0 +1,251 @@
+Prefix(:=<http://example.org/uberon#>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<http://example.org/uberon>
+
+Declaration(Class(:acetabular_part_of_hip_bone))
+Declaration(Class(:anatomical_structure))
+Declaration(Class(:anterior_neural_tube))
+Declaration(Class(:basal_vein))
+Declaration(Class(:bone_element))
+Declaration(Class(:bone_tissue))
+Declaration(Class(:cerebral_vein))
+Declaration(Class(:chordate_pharynx))
+Declaration(Class(:ectoderm))
+Declaration(Class(:ectoderm-derived_structure))
+Declaration(Class(:embryo))
+Declaration(Class(:embryonic_tissue))
+Declaration(Class(:endochondral_element))
+Declaration(Class(:epithelial_cell))
+Declaration(Class(:epithelium))
+Declaration(Class(:external_ectoderm))
+Declaration(Class(:fin))
+Declaration(Class(:fin_bone))
+Declaration(Class(:forebrain))
+Declaration(Class(:fused_metatarsal_bones_2-4))
+Declaration(Class(:fused_metatarsal_bones_3_and_4))
+Declaration(Class(:future_central_nervous_system))
+Declaration(Class(:germ_layer))
+Declaration(Class(:ilium))
+Declaration(Class(:lateral_plate_mesoderm))
+Declaration(Class(:mesenchyme))
+Declaration(Class(:mesenchyme_from_somatopleure))
+Declaration(Class(:mesoderm))
+Declaration(Class(:mesoderm-derived_structure))
+Declaration(Class(:metatarsal_bone))
+Declaration(Class(:metatarsal_bone_of_digit_2))
+Declaration(Class(:metatarsal_bone_of_digit_3))
+Declaration(Class(:metatarsal_bone_of_digit_4))
+Declaration(Class(:multicellular_anatomical_structure))
+Declaration(Class(:neural_tube))
+Declaration(Class(:organ_part))
+Declaration(Class(:paired_fin))
+Declaration(Class(:pelvic_complex))
+Declaration(Class(:pelvic_fin))
+Declaration(Class(:pelvic_fin_distal_radial_bone_2))
+Declaration(Class(:pelvic_fin_distal_radial_element))
+Declaration(Class(:pelvic_fin_distal_radial_element_2))
+Declaration(Class(:pelvic_fin_radial_element))
+Declaration(Class(:pelvic_girdle_skeleton))
+Declaration(Class(:pharyngeal_cleft))
+Declaration(Class(:pharyngeal_ectoderm))
+Declaration(Class(:quality))
+Declaration(Class(:radial_element))
+Declaration(Class(:skeletal_element))
+Declaration(Class(:somatopleure))
+Declaration(Class(:telencephalon))
+Declaration(Class(:tissue))
+Declaration(Class(:unilaminar_epithelium))
+Declaration(Class(:zone_of_bone_organ))
+Declaration(Class(:zone_of_organ))
+Declaration(Class(:1st_arch_maxillar-mandibular_cleft))
+Declaration(ObjectProperty(:composed_primarily_of))
+Declaration(ObjectProperty(:develops_from))
+Declaration(ObjectProperty(:has_fused_element))
+Declaration(ObjectProperty(:has_quality))
+Declaration(ObjectProperty(:part_of))
+Declaration(ObjectProperty(:part_of2))
+############################
+#   Object Properties
+############################
+
+# Object Property: :develops_from (:develops_from)
+
+TransitiveObjectProperty(:develops_from)
+
+# Object Property: :part_of (:part_of)
+
+EquivalentObjectProperties(:part_of :part_of2)
+TransitiveObjectProperty(:part_of)
+
+
+############################
+#   Classes
+############################
+
+# Class: :acetabular_part_of_hip_bone (:acetabular_part_of_hip_bone)
+
+SubClassOf(:acetabular_part_of_hip_bone :zone_of_bone_organ)
+SubClassOf(:acetabular_part_of_hip_bone ObjectSomeValuesFrom(:part_of :ilium))
+
+# Class: :anterior_neural_tube (:anterior_neural_tube)
+
+SubClassOf(:anterior_neural_tube ObjectSomeValuesFrom(:part_of :neural_tube))
+
+# Class: :basal_vein (:basal_vein)
+
+SubClassOf(:basal_vein :cerebral_vein)
+
+# Class: :bone_element (:bone_element)
+
+EquivalentClasses(:bone_element ObjectIntersectionOf(:skeletal_element ObjectSomeValuesFrom(:composed_primarily_of :bone_tissue)))
+
+# Class: :cerebral_vein (:cerebral_vein)
+
+SubClassOf(:cerebral_vein :anatomical_structure)
+SubClassOf(:cerebral_vein ObjectSomeValuesFrom(:part_of :telencephalon))
+
+# Class: :ectoderm (:ectoderm)
+
+SubClassOf(:ectoderm :germ_layer)
+
+# Class: :ectoderm-derived_structure (:ectoderm-derived_structure)
+
+EquivalentClasses(:ectoderm-derived_structure ObjectIntersectionOf(:anatomical_structure ObjectSomeValuesFrom(:develops_from :ectoderm)))
+
+# Class: :embryonic_tissue (:embryonic_tissue)
+
+EquivalentClasses(:embryonic_tissue ObjectIntersectionOf(:tissue ObjectSomeValuesFrom(:part_of :embryo)))
+
+# Class: :epithelium (:epithelium)
+
+EquivalentClasses(:epithelium ObjectIntersectionOf(:tissue ObjectSomeValuesFrom(:composed_primarily_of :epithelial_cell)))
+
+# Class: :external_ectoderm (:external_ectoderm)
+
+SubClassOf(:external_ectoderm ObjectSomeValuesFrom(:part_of :ectoderm))
+
+# Class: :fin_bone (:fin_bone)
+
+EquivalentClasses(:fin_bone ObjectIntersectionOf(:bone_element ObjectSomeValuesFrom(:part_of :fin)))
+
+# Class: :forebrain (:forebrain)
+
+SubClassOf(:forebrain ObjectSomeValuesFrom(:develops_from :anterior_neural_tube))
+
+# Class: :fused_metatarsal_bones_2-4 (:fused_metatarsal_bones_2-4)
+
+EquivalentClasses(:fused_metatarsal_bones_2-4 ObjectIntersectionOf(:metatarsal_bone ObjectSomeValuesFrom(:has_fused_element :metatarsal_bone_of_digit_2) ObjectSomeValuesFrom(:has_fused_element :metatarsal_bone_of_digit_3) ObjectSomeValuesFrom(:has_fused_element :metatarsal_bone_of_digit_4)))
+
+# Class: :fused_metatarsal_bones_3_and_4 (:fused_metatarsal_bones_3_and_4)
+
+EquivalentClasses(:fused_metatarsal_bones_3_and_4 ObjectIntersectionOf(:metatarsal_bone ObjectSomeValuesFrom(:has_fused_element :metatarsal_bone_of_digit_3) ObjectSomeValuesFrom(:has_fused_element :metatarsal_bone_of_digit_4)))
+
+# Class: :future_central_nervous_system (:future_central_nervous_system)
+
+SubClassOf(:future_central_nervous_system ObjectSomeValuesFrom(:develops_from :ectoderm))
+
+# Class: :germ_layer (:germ_layer)
+
+SubClassOf(:germ_layer ObjectSomeValuesFrom(:part_of :embryo))
+
+# Class: :ilium (:ilium)
+
+SubClassOf(:ilium ObjectSomeValuesFrom(:part_of :pelvic_girdle_skeleton))
+
+# Class: :lateral_plate_mesoderm (:lateral_plate_mesoderm)
+
+SubClassOf(:lateral_plate_mesoderm ObjectSomeValuesFrom(:develops_from :mesoderm))
+
+# Class: :mesenchyme_from_somatopleure (:mesenchyme_from_somatopleure)
+
+EquivalentClasses(:mesenchyme_from_somatopleure ObjectIntersectionOf(:mesenchyme ObjectSomeValuesFrom(:develops_from :somatopleure) ObjectSomeValuesFrom(:part_of :embryo)))
+
+# Class: :mesoderm-derived_structure (:mesoderm-derived_structure)
+
+EquivalentClasses(:mesoderm-derived_structure ObjectIntersectionOf(:anatomical_structure ObjectSomeValuesFrom(:develops_from :mesoderm)))
+
+# Class: :multicellular_anatomical_structure (:multicellular_anatomical_structure)
+
+EquivalentClasses(:multicellular_anatomical_structure ObjectIntersectionOf(:anatomical_structure ObjectSomeValuesFrom(:has_quality :quality)))
+
+# Class: :neural_tube (:neural_tube)
+
+SubClassOf(:neural_tube :future_central_nervous_system)
+
+# Class: :organ_part (:organ_part)
+
+SubClassOf(:organ_part :multicellular_anatomical_structure)
+
+# Class: :paired_fin (:paired_fin)
+
+SubClassOf(:paired_fin :fin)
+
+# Class: :pelvic_fin (:pelvic_fin)
+
+EquivalentClasses(:pelvic_fin ObjectIntersectionOf(:paired_fin ObjectSomeValuesFrom(:part_of :pelvic_complex)))
+
+# Class: :pelvic_fin_distal_radial_bone_2 (:pelvic_fin_distal_radial_bone_2)
+
+EquivalentClasses(:pelvic_fin_distal_radial_bone_2 ObjectIntersectionOf(:pelvic_fin_distal_radial_element_2 ObjectSomeValuesFrom(:composed_primarily_of :bone_tissue)))
+
+# Class: :pelvic_fin_distal_radial_element (:pelvic_fin_distal_radial_element)
+
+SubClassOf(:pelvic_fin_distal_radial_element :pelvic_fin_radial_element)
+
+# Class: :pelvic_fin_distal_radial_element_2 (:pelvic_fin_distal_radial_element_2)
+
+SubClassOf(:pelvic_fin_distal_radial_element_2 :pelvic_fin_distal_radial_element)
+
+# Class: :pelvic_fin_radial_element (:pelvic_fin_radial_element)
+
+EquivalentClasses(:pelvic_fin_radial_element ObjectIntersectionOf(:radial_element ObjectSomeValuesFrom(:part_of :pelvic_fin)))
+
+# Class: :pelvic_girdle_skeleton (:pelvic_girdle_skeleton)
+
+SubClassOf(:pelvic_girdle_skeleton ObjectSomeValuesFrom(:develops_from :mesenchyme_from_somatopleure))
+
+# Class: :pharyngeal_cleft (:pharyngeal_cleft)
+
+SubClassOf(:pharyngeal_cleft :pharyngeal_ectoderm)
+
+# Class: :pharyngeal_ectoderm (:pharyngeal_ectoderm)
+
+EquivalentClasses(:pharyngeal_ectoderm ObjectIntersectionOf(:unilaminar_epithelium ObjectSomeValuesFrom(:part_of :chordate_pharynx) ObjectSomeValuesFrom(:part_of :external_ectoderm)))
+
+# Class: :radial_element (:radial_element)
+
+SubClassOf(:radial_element :skeletal_element)
+
+# Class: :somatopleure (:somatopleure)
+
+SubClassOf(:somatopleure ObjectSomeValuesFrom(:part_of :lateral_plate_mesoderm))
+
+# Class: :telencephalon (:telencephalon)
+
+SubClassOf(:telencephalon ObjectSomeValuesFrom(:part_of :forebrain))
+
+# Class: :unilaminar_epithelium (:unilaminar_epithelium)
+
+SubClassOf(:unilaminar_epithelium :epithelium)
+
+# Class: :zone_of_bone_organ (:zone_of_bone_organ)
+
+SubClassOf(:zone_of_bone_organ :zone_of_organ)
+
+# Class: :zone_of_organ (:zone_of_organ)
+
+SubClassOf(:zone_of_organ :organ_part)
+
+# Class: :1st_arch_maxillar-mandibular_cleft (:1st_arch_maxillar-mandibular_cleft)
+
+SubClassOf(:1st_arch_maxillar-mandibular_cleft :pharyngeal_cleft)
+
+
+SubObjectPropertyOf(ObjectPropertyChain(:part_of2 :develops_from) :develops_from)
+)
