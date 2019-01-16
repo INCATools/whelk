@@ -49,6 +49,12 @@ object Bridge {
       Set(ConceptInclusion(Nominal(WIndividual(subj.toString)), ExistentialRestriction(Role(prop.toString), Nominal(WIndividual(obj.toString)))))
     case ObjectPropertyAssertion(_, ObjectInverseOf(ObjectProperty(prop)), NamedIndividual(obj), NamedIndividual(subj)) =>
       Set(ConceptInclusion(Nominal(WIndividual(subj.toString)), ExistentialRestriction(Role(prop.toString), Nominal(WIndividual(obj.toString)))))
+    case EquivalentObjectProperties(_, propertyExpressions) =>
+      val properties = propertyExpressions.collect {case p @ ObjectProperty(_) => p}.toList
+      properties.combinations(2).flatMap {
+        case ObjectProperty(first) :: ObjectProperty(second) :: Nil => Set(RoleInclusion(Role(first.toString), Role(second.toString)))
+        case _ => ??? //impossible
+      }.toSet
     case SubObjectPropertyOf(_, ObjectProperty(subproperty), ObjectProperty(superproperty)) =>
       val sub = Role(subproperty.toString)
       val sup = Role(superproperty.toString)
