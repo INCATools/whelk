@@ -1,5 +1,7 @@
 package org.geneontology.whelk
 
+sealed trait QueueExpression
+
 sealed trait Entity
 
 trait HasSignature {
@@ -20,7 +22,7 @@ object Role {
 
 }
 
-sealed trait Concept extends HasSignature {
+sealed trait Concept extends QueueExpression with HasSignature {
 
   def conceptSignature: Set[Concept]
 
@@ -126,7 +128,7 @@ final case class Nominal(individual: Individual) extends Concept {
 
 }
 
-final case class ConceptInclusion(subclass: Concept, superclass: Concept) extends Axiom {
+final case class ConceptInclusion(subclass: Concept, superclass: Concept) extends Axiom with QueueExpression {
 
   def signature: Set[Entity] = subclass.signature ++ superclass.signature
 
@@ -157,6 +159,10 @@ final case class RoleAssertion(role: Role, subject: Individual, target: Individu
   override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
 
 }
+
+final case class Link(subject: Concept, role: Role, target: Concept) extends QueueExpression
+
+final case class `Sub+`(ci: ConceptInclusion) extends QueueExpression
 
 sealed trait IndividualArgument extends HasSignature
 
