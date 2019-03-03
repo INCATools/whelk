@@ -110,7 +110,7 @@ object Bridge {
       case OWLNothing => Some(Bottom)
       case Class(iri) => Some(AtomicConcept(iri.toString))
       case ObjectSomeValuesFrom(ObjectProperty(prop), filler) => convertExpression(filler).map(ExistentialRestriction(Role(prop.toString), _))
-      case ObjectIntersectionOf(operands) if operands.size >= 2 =>
+      case ObjectIntersectionOf(operands) if operands.nonEmpty =>
         def convert(items: List[Concept]): Concept = items match {
           case first :: second :: Nil  => Conjunction(first, second)
           case first :: second :: rest => Conjunction(first, convert(second :: rest))
