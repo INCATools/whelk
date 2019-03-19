@@ -94,6 +94,18 @@ final case class ExistentialRestriction(role: Role, concept: Concept) extends Co
 
 }
 
+final case class SelfRestriction(role: Role) extends Concept {
+
+  def conceptSignature: Set[Concept] = Set(this)
+
+  def signature: Set[Entity] = Set(role)
+
+  def isAnonymous: Boolean = true
+
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
+
+}
+
 final case class Complement(concept: Concept) extends Concept {
 
   def conceptSignature: Set[Concept] = concept.conceptSignature + this
