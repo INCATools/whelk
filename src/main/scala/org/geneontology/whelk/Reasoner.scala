@@ -165,7 +165,7 @@ object Reasoner {
       val closureSubsBySuperclass = reasoner.closureSubsBySuperclass.updated(superclass, subs + subclass)
       val supers = reasoner.closureSubsBySubclass.getOrElse(subclass, Set.empty)
       val closureSubsBySubclass = reasoner.closureSubsBySubclass.updated(subclass, supers + superclass)
-      val updatedReasoner = `R⊑right`(ci, `R+∃b-right`(ci, `R-∃`(ci, `R+⨅b-right`(ci, `R+⨅right`(ci, `R-⨅`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass, closureSubsBySubclass = closureSubsBySubclass))))))))
+      val updatedReasoner = `R-⟲`(ci, `R⊑right`(ci, `R+∃b-right`(ci, `R-∃`(ci, `R+⨅b-right`(ci, `R+⨅right`(ci, `R-⨅`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass, closureSubsBySubclass = closureSubsBySubclass)))))))))
       ci match {
         case ConceptInclusion(Nominal(ind), concept) => reasoner.ruleEngine.processConceptAssertion(ConceptAssertion(concept, ind), updatedReasoner)
         case _                                       => updatedReasoner
@@ -181,7 +181,7 @@ object Reasoner {
       val closureSubsBySuperclass = reasoner.closureSubsBySuperclass.updated(superclass, subs + subclass)
       val supers = reasoner.closureSubsBySubclass.getOrElse(subclass, Set.empty)
       val closureSubsBySubclass = reasoner.closureSubsBySubclass.updated(subclass, supers + superclass)
-      val updatedReasoner = `R⊑right`(ci, `R+∃b-right`(ci, `R+⨅b-right`(ci, `R+⨅right`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass, closureSubsBySubclass = closureSubsBySubclass))))))
+      val updatedReasoner = `R-⟲`(ci, `R⊑right`(ci, `R+∃b-right`(ci, `R+⨅b-right`(ci, `R+⨅right`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass, closureSubsBySubclass = closureSubsBySubclass)))))))
       ci match {
         case ConceptInclusion(Nominal(ind), concept) => updatedReasoner.ruleEngine.processConceptAssertion(ConceptAssertion(concept, ind), updatedReasoner)
         case _                                       => updatedReasoner
@@ -253,6 +253,11 @@ object Reasoner {
     if (reasoner.closureSubsBySuperclass(Bottom)(link.target))
       reasoner.copy(todo = ConceptInclusion(link.subject, Bottom) :: reasoner.todo)
     else reasoner
+  }
+
+  private[this] def `R-⟲`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = ci match {
+    case ConceptInclusion(sub, SelfRestriction(role)) => reasoner.copy(todo = ConceptInclusion(sub, ExistentialRestriction(role, sub)) :: reasoner.todo)
+    case _                                            => reasoner
   }
 
   private[this] def `R-⨅`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = ci match {

@@ -79,8 +79,10 @@ object Bridge {
       Set(
         RoleComposition(role, role, role),
         Rule(body = List(RoleAtom(role, WVariable("x1"), WVariable("x2")), RoleAtom(role, WVariable("x2"), WVariable("x3"))), head = List(RoleAtom(role, WVariable("x1"), WVariable("x3")))))
+    case ReflexiveObjectProperty(_, ObjectProperty(property)) => Set(
+      ConceptInclusion(Top, SelfRestriction(Role(property.toString)))
+    )
     case ObjectPropertyDomain(_, ObjectProperty(property), ce) => convertExpression(ce).map(concept =>
-      //TODO Is there a faster way to implement Domain?
       ConceptInclusion(ExistentialRestriction(Role(property.toString), Top), concept)).toSet
     case ObjectPropertyRange(_, ObjectProperty(property), ce) => convertExpression(ce).map(concept =>
       //TODO only supporting in rules for now
@@ -110,6 +112,7 @@ object Bridge {
       case OWLNothing => Some(Bottom)
       case Class(iri) => Some(AtomicConcept(iri.toString))
       case ObjectSomeValuesFrom(ObjectProperty(prop), filler) => convertExpression(filler).map(ExistentialRestriction(Role(prop.toString), _))
+      case ObjectHasSelf(ObjectProperty(prop)) => Some(SelfRestriction(Role(prop.toString)))
       case ObjectIntersectionOf(operands) if operands.nonEmpty =>
         def convert(items: List[Concept]): Concept = items match {
           case first :: second :: Nil  => Conjunction(first, second)
