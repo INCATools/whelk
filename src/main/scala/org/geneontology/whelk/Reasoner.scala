@@ -256,7 +256,7 @@ object Reasoner {
   }
 
   private[this] def `R-⟲`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = ci match {
-    case ConceptInclusion(sub, SelfRestriction(role)) => reasoner.copy(todo = ConceptInclusion(sub, ExistentialRestriction(role, sub)) :: reasoner.todo)
+    case ConceptInclusion(sub, SelfRestriction(role)) => reasoner.copy(todo = Link(sub, role, sub) :: reasoner.todo)
     case _                                            => reasoner
   }
 
