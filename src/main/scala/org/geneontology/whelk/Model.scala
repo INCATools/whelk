@@ -126,8 +126,6 @@ final case class Individual(id: String) extends Entity with IndividualArgument {
 
 }
 
-sealed trait Axiom extends HasSignature
-
 final case class Nominal(individual: Individual) extends Concept {
 
   def conceptSignature: Set[Concept] = Set(this)
@@ -139,6 +137,20 @@ final case class Nominal(individual: Individual) extends Concept {
   override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
 
 }
+
+final case class RoleTarget(role: Role, concept: Concept) extends Concept {
+
+  def conceptSignature: Set[Concept] = concept.conceptSignature + this
+
+  def signature: Set[Entity] = concept.signature + role
+
+  def isAnonymous: Boolean = true
+
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
+
+}
+
+sealed trait Axiom extends HasSignature
 
 final case class ConceptInclusion(subclass: Concept, superclass: Concept) extends Axiom with QueueExpression {
 
@@ -155,6 +167,12 @@ final case class RoleInclusion(subproperty: Role, superproperty: Role) extends A
 final case class RoleComposition(first: Role, second: Role, superproperty: Role) extends Axiom {
 
   def signature: Set[Entity] = Set(first, second, superproperty)
+
+}
+
+final case class RoleHasRange(role: Role, range: Concept) extends Axiom {
+
+  def signature: Set[Entity] = range.signature + role
 
 }
 

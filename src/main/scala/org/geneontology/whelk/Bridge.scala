@@ -84,9 +84,11 @@ object Bridge {
     )
     case ObjectPropertyDomain(_, ObjectProperty(property), ce) => convertExpression(ce).map(concept =>
       ConceptInclusion(ExistentialRestriction(Role(property.toString), Top), concept)).toSet
-    case ObjectPropertyRange(_, ObjectProperty(property), ce) => convertExpression(ce).map(concept =>
-      //TODO only supporting in rules for now
-      Rule(body = List(RoleAtom(Role(property.toString), WVariable("x1"), WVariable("x2"))), head = List(ConceptAtom(concept, WVariable("x2"))))).toSet
+    case ObjectPropertyRange(_, ObjectProperty(property), ce) =>
+      convertExpression(ce).toSet[Concept].flatMap(concept => Set(
+        RoleHasRange(Role(property.toString), concept),
+      //TODO is rule needed?
+      Rule(body = List(RoleAtom(Role(property.toString), WVariable("x1"), WVariable("x2"))), head = List(ConceptAtom(concept, WVariable("x2"))))))
     case InverseObjectProperties(_, ObjectProperty(p), ObjectProperty(q)) =>
       val (roleP, roleQ) = (Role(p.toString), Role(q.toString))
       val (x1, x2) = (WVariable("x1"), WVariable("x2"))

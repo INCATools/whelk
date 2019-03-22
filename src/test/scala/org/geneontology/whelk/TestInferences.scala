@@ -8,6 +8,7 @@ import org.semanticweb.owlapi.apibinding.OWLManager
 import org.semanticweb.owlapi.model.parameters.Imports
 import org.semanticweb.owlapi.util._
 import utest._
+import org.geneontology.whelk.Individual
 
 import scala.collection.JavaConverters._
 
@@ -25,6 +26,7 @@ object TestInferences extends TestSuite {
       "586fc17a00001662-merged.ofn" - compareWhelkAndHermiT(false)
       "insulin_secretion.ofn" - compareWhelkAndHermiT(false)
       "swrl-test.ofn" - compareWhelkAndHermiT(false)
+      "part-of-arm-ranges.ofn" - compareWhelkAndHermiT(false)
     }
   }
 
@@ -74,8 +76,8 @@ object TestInferences extends TestSuite {
     val whelkClassAssertions = done.classAssertions.filterNot(_.concept == Top)
     val whelkRoleAssertions = done.roleAssertions
     val whelkSubClassAxioms = done.subs.filter {
-      case ConceptInclusion(sub: AtomicConcept, sup: AtomicConcept) if (sub != sup && sub != Bottom && sup != Top) => true
-      case _                                                                                                       => false
+      case ConceptInclusion(sub: AtomicConcept, sup: AtomicConcept) if sub != sup && sub != Bottom && sup != Top => true
+      case _                                                                                                     => false
     }
     if (!aboxOnly) assert(whelkSubClassAxioms == hermitConceptInclusions)
     assert(whelkClassAssertions == hermitClassAssertions)
