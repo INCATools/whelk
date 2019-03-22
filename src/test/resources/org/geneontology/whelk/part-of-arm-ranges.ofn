@@ -1,0 +1,138 @@
+Prefix(:=<http://example.org/uberon#>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<http://example.org/uberon>
+
+Declaration(Class(:A))
+Declaration(Class(:B))
+Declaration(Class(:C))
+Declaration(Class(:D))
+Declaration(Class(:arm))
+Declaration(Class(:finger))
+Declaration(Class(:hand))
+Declaration(Class(:part_of_arm))
+Declaration(Class(:part_of_some_A))
+Declaration(Class(:q_some_C))
+Declaration(Class(:r_some_hand))
+Declaration(Class(:reflexive_part_of_some_arm))
+Declaration(Class(:s_some_Self))
+Declaration(Class(:special_arm))
+Declaration(Class(:special_hand))
+Declaration(Class(:t_some_Self))
+Declaration(ObjectProperty(:p))
+Declaration(ObjectProperty(:part_of))
+Declaration(ObjectProperty(:q))
+Declaration(ObjectProperty(:r))
+Declaration(ObjectProperty(:reflexive_part_of))
+Declaration(ObjectProperty(:s))
+Declaration(ObjectProperty(:t))
+Declaration(NamedIndividual(:a))
+Declaration(NamedIndividual(:b))
+############################
+#   Object Properties
+############################
+
+# Object Property: :p (:p)
+
+ObjectPropertyRange(:p :C)
+
+# Object Property: :part_of (:part_of)
+
+SubObjectPropertyOf(:part_of :reflexive_part_of)
+TransitiveObjectProperty(:part_of)
+ObjectPropertyRange(:part_of :A)
+
+# Object Property: :q (:q)
+
+SubObjectPropertyOf(:q :p)
+
+# Object Property: :r (:r)
+
+ObjectPropertyRange(:r :B)
+
+# Object Property: :reflexive_part_of (:reflexive_part_of)
+
+ReflexiveObjectProperty(:reflexive_part_of)
+
+# Object Property: :t (:t)
+
+SubObjectPropertyOf(:t :s)
+
+
+############################
+#   Classes
+############################
+
+# Class: :A (:A)
+
+SubClassOf(:A ObjectSomeValuesFrom(:q :B))
+
+# Class: :D (:D)
+
+SubClassOf(:D ObjectSomeValuesFrom(:t :D))
+
+# Class: :arm (:arm)
+
+SubClassOf(:arm ObjectSomeValuesFrom(:r :hand))
+
+# Class: :finger (:finger)
+
+SubClassOf(:finger ObjectSomeValuesFrom(:part_of :special_hand))
+
+# Class: :hand (:hand)
+
+SubClassOf(:hand ObjectSomeValuesFrom(:part_of :special_arm))
+SubClassOf(:hand ObjectHasSelf(:r))
+
+# Class: :part_of_arm (:part_of_arm)
+
+EquivalentClasses(:part_of_arm ObjectSomeValuesFrom(:part_of :arm))
+
+# Class: :part_of_some_A (:part_of_some_A)
+
+EquivalentClasses(:part_of_some_A ObjectSomeValuesFrom(:part_of :A))
+
+# Class: :q_some_C (:q_some_C)
+
+EquivalentClasses(:q_some_C ObjectSomeValuesFrom(:q :C))
+
+# Class: :r_some_hand (:r_some_hand)
+
+EquivalentClasses(:r_some_hand ObjectSomeValuesFrom(:r :hand))
+
+# Class: :reflexive_part_of_some_arm (:reflexive_part_of_some_arm)
+
+EquivalentClasses(:reflexive_part_of_some_arm ObjectSomeValuesFrom(:reflexive_part_of :arm))
+
+# Class: :s_some_Self (:s_some_Self)
+
+EquivalentClasses(:s_some_Self ObjectHasSelf(:s))
+
+# Class: :special_arm (:special_arm)
+
+SubClassOf(:special_arm :arm)
+
+# Class: :special_hand (:special_hand)
+
+SubClassOf(:special_hand :hand)
+
+# Class: :t_some_Self (:t_some_Self)
+
+EquivalentClasses(:t_some_Self ObjectHasSelf(:t))
+
+
+############################
+#   Named Individuals
+############################
+
+# Individual: :a (:a)
+
+ObjectPropertyAssertion(:t :a :a)
+
+
+)
