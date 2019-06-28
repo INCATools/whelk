@@ -40,7 +40,7 @@ libraryDependencies ++= {
   Seq(
     "org.scalaz"             %% "scalaz-core"            % "7.2.27",
     "net.sourceforge.owlapi" %  "owlapi-distribution"    % "4.5.10",
-    "org.phenoscape"         %% "scowl"                  % "1.3.2",
+    "org.phenoscape"         %% "scowl"                  % "1.3.4",
     "org.semanticweb.elk"    %  "elk-owlapi"             % "0.4.3"     % Test,
     "net.sourceforge.owlapi" %  "org.semanticweb.hermit" % "1.4.0.432" % Test,
     "net.sourceforge.owlapi" %  "jfact"                  % "4.0.4"     % Test,
