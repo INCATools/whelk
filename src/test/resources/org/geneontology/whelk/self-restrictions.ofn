@@ -10,11 +10,18 @@ Ontology(<http://example.org/>
 
 Declaration(Class(:A))
 Declaration(Class(:B))
+Declaration(Class(:C))
+Declaration(Class(:D))
+Declaration(Class(:DandQSomeC))
 Declaration(Class(:rSomeA))
 Declaration(Class(:rSomeSelf))
 Declaration(Class(:sSomeSelf))
+Declaration(Class(:tSomeC))
+Declaration(ObjectProperty(:dRole))
+Declaration(ObjectProperty(:q))
 Declaration(ObjectProperty(:r))
 Declaration(ObjectProperty(:s))
+Declaration(ObjectProperty(:t))
 Declaration(NamedIndividual(:a))
 ############################
 #   Object Properties
@@ -34,6 +41,14 @@ SubObjectPropertyOf(:r :s)
 SubClassOf(:B :A)
 SubClassOf(:B ObjectHasSelf(:r))
 
+# Class: :D (:D)
+
+EquivalentClasses(:D ObjectHasSelf(:dRole))
+
+# Class: :DandQSomeC (:DandQSomeC)
+
+EquivalentClasses(:DandQSomeC ObjectIntersectionOf(:D ObjectSomeValuesFrom(:q :C)))
+
 # Class: :rSomeA (:rSomeA)
 
 EquivalentClasses(:rSomeA ObjectSomeValuesFrom(:r :A))
@@ -46,6 +61,10 @@ EquivalentClasses(:rSomeSelf ObjectHasSelf(:r))
 
 EquivalentClasses(:sSomeSelf ObjectHasSelf(:s))
 
+# Class: :tSomeC (:tSomeC)
+
+EquivalentClasses(:tSomeC ObjectSomeValuesFrom(:t :C))
+
 
 ############################
 #   Named Individuals
@@ -56,4 +75,5 @@ EquivalentClasses(:sSomeSelf ObjectHasSelf(:s))
 ObjectPropertyAssertion(:r :a :a)
 
 
+SubObjectPropertyOf(ObjectPropertyChain(:dRole :q) :t)
 )
