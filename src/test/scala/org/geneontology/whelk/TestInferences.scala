@@ -1,6 +1,7 @@
 package org.geneontology.whelk
 
 import org.geneontology.whelk.BuiltIn._
+import org.geneontology.whelk.Individual
 import org.phenoscape.scowl._
 import org.semanticweb.HermiT.ReasonerFactory
 import org.semanticweb.elk.owlapi.ElkReasonerFactory
@@ -25,6 +26,7 @@ object TestInferences extends TestSuite {
       "586fc17a00001662-merged.ofn" - compareWhelkAndHermiT(false)
       "insulin_secretion.ofn" - compareWhelkAndHermiT(false)
       "swrl-test.ofn" - compareWhelkAndHermiT(false)
+      "self-restrictions.ofn" - compareWhelkAndHermiT(false)
     }
   }
 

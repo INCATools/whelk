@@ -1,0 +1,59 @@
+Prefix(:=<http://example.org/>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<http://example.org/>
+
+Declaration(Class(:A))
+Declaration(Class(:B))
+Declaration(Class(:rSomeA))
+Declaration(Class(:rSomeSelf))
+Declaration(Class(:sSomeSelf))
+Declaration(ObjectProperty(:r))
+Declaration(ObjectProperty(:s))
+Declaration(NamedIndividual(:a))
+############################
+#   Object Properties
+############################
+
+# Object Property: :r (:r)
+
+SubObjectPropertyOf(:r :s)
+
+
+############################
+#   Classes
+############################
+
+# Class: :B (:B)
+
+SubClassOf(:B :A)
+SubClassOf(:B ObjectHasSelf(:r))
+
+# Class: :rSomeA (:rSomeA)
+
+EquivalentClasses(:rSomeA ObjectSomeValuesFrom(:r :A))
+
+# Class: :rSomeSelf (:rSomeSelf)
+
+EquivalentClasses(:rSomeSelf ObjectHasSelf(:r))
+
+# Class: :sSomeSelf (:sSomeSelf)
+
+EquivalentClasses(:sSomeSelf ObjectHasSelf(:s))
+
+
+############################
+#   Named Individuals
+############################
+
+# Individual: :a (:a)
+
+ObjectPropertyAssertion(:r :a :a)
+
+
+)
