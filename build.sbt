@@ -9,11 +9,11 @@ version       := "0.2.2"
 publishMavenStyle := true
 
 publishTo := {
-    val nexus = "https://oss.sonatype.org/"
-    if (isSnapshot.value)
-        Some("snapshots" at nexus + "content/repositories/snapshots")
-    else
-        Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+  val nexus = "https://oss.sonatype.org/"
+  if (isSnapshot.value)
+    Some("snapshots" at nexus + "content/repositories/snapshots")
+  else
+    Some("releases"  at nexus + "service/local/staging/deploy/maven2")
 }
 
 publishArtifact in Test := false
@@ -22,7 +22,9 @@ licenses := Seq("BSD-3-Clause" -> url("https://opensource.org/licenses/BSD-3-Cla
 
 homepage := Some(url("https://github.com/balhoff/whelk"))
 
-scalaVersion  := "2.12.8"
+scalaVersion  := "2.13.0"
+
+crossScalaVersions := Seq("2.12.8", "2.13.0")
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-encoding", "utf8")
 
@@ -40,24 +42,23 @@ libraryDependencies ++= {
   Seq(
     "org.scalaz"             %% "scalaz-core"            % "7.2.27",
     "net.sourceforge.owlapi" %  "owlapi-distribution"    % "4.5.10",
-    "org.phenoscape"         %% "scowl"                  % "1.3.2",
+    "org.phenoscape"         %% "scowl"                  % "1.3.4",
     "org.semanticweb.elk"    %  "elk-owlapi"             % "0.4.3"     % Test,
     "net.sourceforge.owlapi" %  "org.semanticweb.hermit" % "1.4.0.432" % Test,
     "net.sourceforge.owlapi" %  "jfact"                  % "4.0.4"     % Test,
-    "com.lihaoyi"            %% "utest"                  % "0.6.6"     % Test
+    "com.lihaoyi"            %% "utest"                  % "0.6.9"     % Test
   )
 }
 
-pomExtra := (
-    <scm>
-        <url>git@github.com:balhoff/whelk.git</url>
-        <connection>scm:git:git@github.com:balhoff/whelk.git</connection>
-    </scm>
-    <developers>
-        <developer>
-            <id>balhoff</id>
-            <name>Jim Balhoff</name>
-            <email>jim@balhoff.org</email>
-        </developer>
-    </developers>
-)
+pomExtra := <scm>
+              <url>git@github.com:balhoff/whelk.git</url>
+              <connection>scm:git:git@github.com:balhoff/whelk.git</connection>
+            </scm>
+            <developers>
+              <developer>
+                <id>balhoff</id>
+                <name>Jim Balhoff</name>
+                <email>jim@balhoff.org</email>
+              </developer>
+            </developers>
+
