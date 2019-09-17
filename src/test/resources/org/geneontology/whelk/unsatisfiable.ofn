@@ -1,0 +1,26 @@
+Prefix(:=<http://example.org/unsatisfiable#>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<http://example.org/unsatisfiable>
+
+Declaration(Class(:A))
+Declaration(Class(:B))
+############################
+#   Classes
+############################
+
+# Class: :A (:A)
+
+DisjointClasses(:A :B)
+
+# Class: :B (:B)
+
+SubClassOf(:B :A)
+
+
+)
