@@ -3,4 +3,5 @@ scala:
   - "2.12.10"
   - "2.13.0"
 jdk:
-  - oraclejdk8
+  - openjdk8
+  - openjdk11
