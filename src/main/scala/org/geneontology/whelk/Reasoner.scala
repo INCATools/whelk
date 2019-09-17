@@ -27,7 +27,10 @@ final case class ReasonerState(
   def subs: Set[ConceptInclusion] = closureSubsBySuperclass.flatMap {
     case (superclass, subclasses) =>
       subclasses.map(ConceptInclusion(_, superclass))
-  }.toSet
+  }.toSet ++
+    inits.map(t => ConceptInclusion(t, Top)) ++
+    inits.map(t => ConceptInclusion(Bottom, t)) +
+    ConceptInclusion(Bottom, Top) + ConceptInclusion(Bottom, Bottom) + ConceptInclusion(Top, Top)
 
   def classAssertions: Set[ConceptAssertion] = (for {
     (Nominal(ind), superclasses) <- closureSubsBySubclass
@@ -40,10 +43,12 @@ final case class ReasonerState(
     Nominal(subject) <- subjects
   } yield RoleAssertion(role, subject, target)).toSet
 
-  def computeTaxonomy: Map[AtomicConcept, (Set[AtomicConcept], Set[AtomicConcept])] =
-    closureSubsBySubclass.collect {
-      case (c: AtomicConcept, subsumers) => c -> directSubsumers(c, subsumers)
+  def computeTaxonomy: Map[AtomicConcept, (Set[AtomicConcept], Set[AtomicConcept])] = {
+    closureSubsBySubclass.updated(Bottom, inits).collect {
+      case (c: AtomicConcept, subsumers) =>
+        c -> directSubsumers(c, subsumers + Top)
     }
+  }
 
   def individualsDirectTypes: Map[Individual, Set[AtomicConcept]] =
     closureSubsBySubclass.collect {
@@ -62,7 +67,7 @@ final case class ReasonerState(
   //    direct(concept, allSubsConcepts + Bottom, closureSubsBySuperclass.withDefaultValue(Set.empty))
 
   def directSubsumers(concept: Concept, allSubsConcepts: Set[Concept]): (Set[AtomicConcept], Set[AtomicConcept]) =
-    direct(concept, allSubsConcepts + Top, closureSubsBySubclass.withDefaultValue(Set.empty[Concept]), Top)
+    direct(concept, allSubsConcepts, closureSubsBySubclass.updated(Bottom, inits).withDefaultValue(Set.empty[Concept]), Top) //FIXME adding Bottom to this map should probably happen everywhere (or in reasoning)
 
   def direct(concept: Concept, allSubsConcepts: Set[Concept], subsumerFunction: Concept => Concept => Boolean, tautology: Concept): (Set[AtomicConcept], Set[AtomicConcept]) = {
     val allSubsumers = allSubsConcepts.iterator.collect { case ac: AtomicConcept => ac }.filterNot(_ == concept)
@@ -116,6 +121,7 @@ object Reasoner {
     val distinctConcepts = axioms.flatMap {
       case ConceptInclusion(subclass, superclass) => Set(subclass, superclass)
     }.flatMap(_.conceptSignature)
+    val atomicConcepts = distinctConcepts.collect { case a: AtomicConcept => a }
     val additionalAxioms = distinctConcepts.flatMap {
       case d @ Disjunction(_) => `R⊔`(d)
       case c @ Complement(_)  => `R¬`(c)
@@ -125,7 +131,7 @@ object Reasoner {
     val updatedAssertions = additionalAxioms.toList ::: axioms.toList
     computeClosure(reasoner.copy(
       assertions = reasoner.assertions ::: updatedAssertions,
-      todo = reasoner.todo ::: updatedAssertions,
+      todo = reasoner.todo ::: atomicConcepts.toList ::: updatedAssertions,
       assertedNegativeSelfRestrictionsByRole = negativeSelfRestrictions))
   }
 
