@@ -40,7 +40,7 @@ fork in Test := true
 
 libraryDependencies ++= {
   Seq(
-    "org.scalaz"             %% "scalaz-core"            % "7.2.28",
+    "org.scalaz"             %% "scalaz-core"            % "7.2.29",
     "net.sourceforge.owlapi" %  "owlapi-distribution"    % "4.5.13",
     "org.phenoscape"         %% "scowl"                  % "1.3.4",
     "org.semanticweb.elk"    %  "elk-owlapi"             % "0.4.3"     % Test,
