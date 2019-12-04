@@ -4,7 +4,7 @@ organization  := "org.geneontology"
 
 name          := "whelk"
 
-version       := "0.3"
+version       := "0.4"
 
 publishMavenStyle := true
 
@@ -22,9 +22,9 @@ licenses := Seq("BSD-3-Clause" -> url("https://opensource.org/licenses/BSD-3-Cla
 
 homepage := Some(url("https://github.com/balhoff/whelk"))
 
-scalaVersion  := "2.13.0"
+scalaVersion  := "2.13.1"
 
-crossScalaVersions := Seq("2.12.10", "2.13.0")
+crossScalaVersions := Seq("2.12.10", "2.13.1")
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-encoding", "utf8")
 
