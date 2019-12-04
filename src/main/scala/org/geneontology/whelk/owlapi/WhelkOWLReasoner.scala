@@ -1,8 +1,8 @@
 package org.geneontology.whelk.owlapi
 
 import java.util.Collections
-import java.util.{ List => JList }
-import java.util.{ Set => JSet }
+import java.util.{List => JList}
+import java.util.{Set => JSet}
 import java.util.UUID
 
 import scala.collection.JavaConverters._
@@ -104,10 +104,10 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
   override def getInstances(ce: OWLClassExpression, direct: Boolean): NodeSet[OWLNamedIndividual] = {
     val (concept, reasoner) = Bridge.convertExpression(ce) match {
       case Some(named @ AtomicConcept(_)) => (named, whelk)
-      case Some(expression) =>
+      case Some(expression)               =>
         val fresh = freshConcept()
         (fresh, Reasoner.assert(Set(ConceptInclusion(expression, fresh)), whelk))
-      case None => throw new UnsupportedOperationException(s"getInstances: $ce")
+      case None                           => throw new UnsupportedOperationException(s"getInstances: $ce")
     }
     val subsumed = if (direct) {
       reasoner.directlySubsumes(concept)._2
@@ -122,7 +122,7 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
   override def getObjectPropertyValues(ind: OWLNamedIndividual, pe: OWLObjectPropertyExpression): NodeSet[OWLNamedIndividual] = {
     val Ind = Individual(ind.getIRI.toString)
     val values = pe match {
-      case ObjectProperty(iri) =>
+      case ObjectProperty(iri)                  =>
         val Prop = Role(iri.toString)
         whelk.roleAssertions.collect { case RoleAssertion(Prop, Ind, value) => value }
       case ObjectInverseOf(ObjectProperty(iri)) =>
@@ -147,10 +147,10 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
   override def getSubClasses(ce: OWLClassExpression, direct: Boolean): NodeSet[OWLClass] = {
     val (concept, reasoner) = Bridge.convertExpression(ce) match {
       case Some(named @ AtomicConcept(_)) => (named, whelk)
-      case Some(expression) =>
+      case Some(expression)               =>
         val fresh = freshConcept()
         (fresh, Reasoner.assert(Set(ConceptInclusion(fresh, expression), ConceptInclusion(expression, fresh)), whelk))
-      case None => throw new UnsupportedOperationException(s"getSubClasses: $ce")
+      case None                           => throw new UnsupportedOperationException(s"getSubClasses: $ce")
     }
     val subsumed: Set[AtomicConcept] = if (direct) {
       reasoner.directlySubsumes(concept)._2
@@ -171,10 +171,10 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
   override def getSuperClasses(ce: OWLClassExpression, direct: Boolean): NodeSet[OWLClass] = {
     val (concept, reasoner) = Bridge.convertExpression(ce) match {
       case Some(named @ AtomicConcept(_)) => (named, whelk)
-      case Some(expression) =>
+      case Some(expression)               =>
         val fresh = freshConcept()
         (fresh, Reasoner.assert(Set(ConceptInclusion(fresh, expression), ConceptInclusion(expression, fresh)), whelk))
-      case None => throw new UnsupportedOperationException(s"getSuperClasses: $ce")
+      case None                           => throw new UnsupportedOperationException(s"getSuperClasses: $ce")
     }
     val subsumers: Set[AtomicConcept] = if (direct) {
       reasoner.directlySubsumedBy(concept)._2
@@ -249,10 +249,10 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
   override def getEquivalentClasses(ce: OWLClassExpression): Node[OWLClass] = {
     val (concept, reasoner) = Bridge.convertExpression(ce) match {
       case Some(named @ AtomicConcept(_)) => (named, whelk)
-      case Some(expression) =>
+      case Some(expression)               =>
         val fresh = freshConcept()
         (fresh, Reasoner.assert(Set(ConceptInclusion(fresh, expression), ConceptInclusion(expression, fresh)), whelk))
-      case None => throw new UnsupportedOperationException(s"getEquivalentClasses: $ce")
+      case None                           => throw new UnsupportedOperationException(s"getEquivalentClasses: $ce")
     }
     val equivClasses = (reasoner.closureSubsBySubclass.getOrElse(concept, Set.empty).intersect(reasoner.closureSubsBySuperclass.getOrElse(concept, Set.empty)) - concept).collect { case AtomicConcept(iri) => Class(iri) }
     NodeFactory.getOWLClassNode(equivClasses.asJava)
@@ -292,17 +292,18 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
         operands.toList match {
           case ObjectOneOf(individuals) :: ObjectComplementOf(expression) :: Nil if individuals.size == 1 => Some(!(getInstances(expression, false).getFlattened.contains(individuals.head)))
           case ObjectComplementOf(expression) :: ObjectOneOf(individuals) :: Nil if individuals.size == 1 => Some(!(getInstances(expression, false).getFlattened.contains(individuals.head)))
-          case _ => None
+          case _                                                                                          => None
         }
+      case _                                                    => None
     }
     maybeSatisfiable.getOrElse {
       // This is the "normal" path to check EL inferences.
       val (concept, reasoner) = Bridge.convertExpression(ce) match {
         case Some(named @ AtomicConcept(_)) => (named, whelk)
-        case Some(expression) =>
+        case Some(expression)               =>
           val fresh = freshConcept()
           (fresh, Reasoner.assert(Set(ConceptInclusion(fresh, expression)), whelk))
-        case None => throw new UnsupportedOperationException(s"getEquivalentClasses: $ce")
+        case None                           => throw new UnsupportedOperationException(s"getEquivalentClasses: $ce")
       }
       !reasoner.closureSubsBySubclass.getOrElse(concept, Set.empty)(Bottom)
     }
