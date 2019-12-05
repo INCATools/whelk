@@ -4,7 +4,7 @@ organization  := "org.geneontology"
 
 name          := "whelk"
 
-version       := "0.3"
+version       := "0.4"
 
 publishMavenStyle := true
 
@@ -22,9 +22,9 @@ licenses := Seq("BSD-3-Clause" -> url("https://opensource.org/licenses/BSD-3-Cla
 
 homepage := Some(url("https://github.com/balhoff/whelk"))
 
-scalaVersion  := "2.13.0"
+scalaVersion  := "2.13.1"
 
-crossScalaVersions := Seq("2.12.10", "2.13.0")
+crossScalaVersions := Seq("2.12.10", "2.13.1")
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-encoding", "utf8")
 
@@ -40,8 +40,8 @@ fork in Test := true
 
 libraryDependencies ++= {
   Seq(
-    "org.scalaz"             %% "scalaz-core"            % "7.2.28",
-    "net.sourceforge.owlapi" %  "owlapi-distribution"    % "4.5.14",
+    "org.scalaz"             %% "scalaz-core"            % "7.2.29",
+    "net.sourceforge.owlapi" %  "owlapi-distribution"    % "4.5.13",
     "org.phenoscape"         %% "scowl"                  % "1.3.4",
     "org.semanticweb.elk"    %  "elk-owlapi"             % "0.4.3"     % Test,
     "net.sourceforge.owlapi" %  "org.semanticweb.hermit" % "1.4.0.432" % Test,
