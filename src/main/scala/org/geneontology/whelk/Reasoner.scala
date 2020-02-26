@@ -37,19 +37,25 @@ final case class ReasonerState(
     a @ AtomicConcept(_) <- superclasses
   } yield ConceptAssertion(a, ind)).toSet
 
+  def directClassAssertions: Set[ConceptAssertion] = (for {
+    (n @ Nominal(ind), superclasses) <- closureSubsBySubclass
+    (equiv, types) = directSubsumers(n, superclasses)
+    typ <- types
+  } yield ConceptAssertion(typ, ind)).toSet
+
   def roleAssertions: Set[RoleAssertion] = (for {
     (Nominal(target), links) <- linksByTarget
     (role, subjects) <- links
     Nominal(subject) <- subjects
   } yield RoleAssertion(role, subject, target)).toSet
 
-  def computeTaxonomy: Map[AtomicConcept, (Set[AtomicConcept], Set[AtomicConcept])] = {
+  def computeTaxonomy: Map[AtomicConcept, (Set[AtomicConcept], Set[AtomicConcept])] =
     closureSubsBySubclass.updated(Bottom, inits).collect {
       case (c: AtomicConcept, subsumers) =>
         c -> directSubsumers(c, subsumers + Top)
     }
-  }
 
+  // redundant with directClassAssertions
   def individualsDirectTypes: Map[Individual, Set[AtomicConcept]] =
     closureSubsBySubclass.collect {
       case (n @ Nominal(ind), subsumers) => ind -> directSubsumers(n, subsumers)._2
