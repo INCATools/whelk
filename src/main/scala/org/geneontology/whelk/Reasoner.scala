@@ -173,8 +173,8 @@ object Reasoner {
     if (reasoner.inits(concept)) reasoner
     else {
       val newState = `R⊤right`(concept, R0(concept, reasoner.copy(inits = reasoner.inits + concept)))
-      reasoner.queueDelegates.valuesIterator.foldLeft(newState) { (state, delegate) =>
-        delegate.processConcept(concept, state)
+      newState.queueDelegates.keysIterator.foldLeft(newState) { (state, delegateKey) =>
+        state.queueDelegates(delegateKey).processConcept(concept, state)
       }
     }
   }
@@ -191,8 +191,8 @@ object Reasoner {
         case ConceptInclusion(Nominal(ind), concept) => reasoner.ruleEngine.processConceptAssertion(ConceptAssertion(concept, ind), updatedReasoner)
         case _                                       => updatedReasoner
       }
-      reasoner.queueDelegates.valuesIterator.foldLeft(newState) { (state, delegate) =>
-        delegate.processConceptInclusion(ci, state)
+      newState.queueDelegates.keysIterator.foldLeft(newState) { (state, delegateKey) =>
+        state.queueDelegates(delegateKey).processConceptInclusion(ci, state)
       }
     }
   }
@@ -209,8 +209,8 @@ object Reasoner {
         case ConceptInclusion(Nominal(ind), concept) => updatedReasoner.ruleEngine.processConceptAssertion(ConceptAssertion(concept, ind), updatedReasoner)
         case _                                       => updatedReasoner
       }
-      reasoner.queueDelegates.valuesIterator.foldLeft(newState) { (state, delegate) =>
-        delegate.processSubPlus(ci, state)
+      newState.queueDelegates.keysIterator.foldLeft(newState) { (state, delegateKey) =>
+        state.queueDelegates(delegateKey).processSubPlus(ci, state)
       }
     }
   }
@@ -233,8 +233,8 @@ object Reasoner {
         case Link(Nominal(subjectInd), aRole, Nominal(targetInd)) => updatedReasoner.ruleEngine.processRoleAssertion(RoleAssertion(aRole, subjectInd, targetInd), updatedReasoner)
         case _                                                    => updatedReasoner
       }
-      reasoner.queueDelegates.valuesIterator.foldLeft(newState) { (state, delegate) =>
-        delegate.processLink(link, state)
+      newState.queueDelegates.keysIterator.foldLeft(newState) { (state, delegateKey) =>
+        state.queueDelegates(delegateKey).processLink(link, state)
       }
     }
   }
