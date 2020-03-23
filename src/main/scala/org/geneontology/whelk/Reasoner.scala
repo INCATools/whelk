@@ -1,6 +1,8 @@
 package org.geneontology.whelk
 
 import BuiltIn._
+import org.geneontology.whelk.Reasoner.QueueDelegate
+
 import scala.annotation.tailrec
 
 final case class ReasonerState(
@@ -22,7 +24,8 @@ final case class ReasonerState(
                                 propagations: Map[Concept, Map[Role, List[ExistentialRestriction]]],
                                 assertedNegativeSelfRestrictionsByRole: Map[Role, SelfRestriction],
                                 ruleEngine: RuleEngine,
-                                wm: WorkingMemory) {
+                                wm: WorkingMemory,
+                                queueDelegates: Map[String, QueueDelegate] = Map.empty) {
 
   def subs: Set[ConceptInclusion] = closureSubsBySuperclass.flatMap {
     case (superclass, subclasses) =>
@@ -101,13 +104,13 @@ final case class ReasonerState(
 
 object ReasonerState {
 
-  val empty: ReasonerState = ReasonerState(Map.empty, Map.empty, Nil, Nil, false, Set.empty, Map.empty, Map(Bottom -> Set.empty), Map(Top -> Set.empty), Set.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, RuleEngine.empty, RuleEngine.empty.emptyMemory)
+  val empty: ReasonerState = ReasonerState(Map.empty, Map.empty, Nil, Nil, false, Set.empty, Map.empty, Map(Bottom -> Set.empty), Map(Top -> Set.empty), Set.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, RuleEngine.empty, RuleEngine.empty.emptyMemory, Map.empty)
 
 }
 
 object Reasoner {
 
-  def assert(axioms: Set[Axiom]): ReasonerState = {
+  def assert(axioms: Set[Axiom], delegates: Map[String, QueueDelegate] = Map.empty): ReasonerState = {
     import scalaz.Scalaz._
     val allRoles = axioms.flatMap(_.signature).collect { case role: Role => role }
     val allRoleInclusions = axioms.collect { case ri: RoleInclusion => ri }
@@ -120,7 +123,7 @@ object Reasoner {
     val concIncs = axioms.collect { case ci: ConceptInclusion => ci } ++ anonymousRulePredicates
     val ruleEngine = RuleEngine(rules)
     val wm = ruleEngine.emptyMemory
-    assert(concIncs, ReasonerState.empty.copy(hier = hier, hierComps = hierComps, ruleEngine = ruleEngine, wm = wm))
+    assert(concIncs, ReasonerState.empty.copy(hier = hier, hierComps = hierComps, ruleEngine = ruleEngine, wm = wm, queueDelegates = delegates))
   }
 
   def assert(axioms: Set[ConceptInclusion], reasoner: ReasonerState): ReasonerState = {
@@ -167,8 +170,13 @@ object Reasoner {
   }
 
   private[this] def processConcept(concept: Concept, reasoner: ReasonerState): ReasonerState = {
-    if (reasoner.inits(concept)) reasoner else
-      `R⊤right`(concept, R0(concept, reasoner.copy(inits = reasoner.inits + concept)))
+    if (reasoner.inits(concept)) reasoner
+    else {
+      val newState = `R⊤right`(concept, R0(concept, reasoner.copy(inits = reasoner.inits + concept)))
+      reasoner.queueDelegates.valuesIterator.foldLeft(newState) { (state, delegate) =>
+        delegate.processConcept(concept, state)
+      }
+    }
   }
 
   private[this] def processConceptInclusion(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = {
@@ -179,9 +187,12 @@ object Reasoner {
       val supers = reasoner.closureSubsBySubclass.getOrElse(subclass, Set.empty)
       val closureSubsBySubclass = reasoner.closureSubsBySubclass.updated(subclass, supers + superclass)
       val updatedReasoner = `R+⟲`(ci, `R-⟲`(ci, `R⊑right`(ci, `R+∃b-right`(ci, `R-∃`(ci, `R+⨅b-right`(ci, `R+⨅right`(ci, `R-⨅`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass, closureSubsBySubclass = closureSubsBySubclass))))))))))
-      ci match {
+      val newState = ci match {
         case ConceptInclusion(Nominal(ind), concept) => reasoner.ruleEngine.processConceptAssertion(ConceptAssertion(concept, ind), updatedReasoner)
         case _                                       => updatedReasoner
+      }
+      reasoner.queueDelegates.valuesIterator.foldLeft(newState) { (state, delegate) =>
+        delegate.processConceptInclusion(ci, state)
       }
     }
   }
@@ -194,9 +205,12 @@ object Reasoner {
       val supers = reasoner.closureSubsBySubclass.getOrElse(subclass, Set.empty)
       val closureSubsBySubclass = reasoner.closureSubsBySubclass.updated(subclass, supers + superclass)
       val updatedReasoner = `R-⟲`(ci, `R⊑right`(ci, `R+∃b-right`(ci, `R+⨅b-right`(ci, `R+⨅right`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass, closureSubsBySubclass = closureSubsBySubclass)))))))
-      ci match {
+      val newState = ci match {
         case ConceptInclusion(Nominal(ind), concept) => updatedReasoner.ruleEngine.processConceptAssertion(ConceptAssertion(concept, ind), updatedReasoner)
         case _                                       => updatedReasoner
+      }
+      reasoner.queueDelegates.valuesIterator.foldLeft(newState) { (state, delegate) =>
+        delegate.processSubPlus(ci, state)
       }
     }
   }
@@ -215,9 +229,12 @@ object Reasoner {
       val updatedRolesToSubjects = rolesToSubjects.updated(role, updatedSubjects)
       val linksByTarget = reasoner.linksByTarget.updated(target, updatedRolesToSubjects)
       val updatedReasoner = `R+⟲𝒪`(link, `R⤳`(link, `R∘left`(link, `R∘right`(link, `R+∃right`(link, `R⊥right`(link, reasoner.copy(linksBySubject = linksBySubject, linksByTarget = linksByTarget)))))))
-      link match {
+      val newState = link match {
         case Link(Nominal(subjectInd), aRole, Nominal(targetInd)) => updatedReasoner.ruleEngine.processRoleAssertion(RoleAssertion(aRole, subjectInd, targetInd), updatedReasoner)
         case _                                                    => updatedReasoner
+      }
+      reasoner.queueDelegates.valuesIterator.foldLeft(newState) { (state, delegate) =>
+        delegate.processLink(link, state)
       }
     }
   }
@@ -497,6 +514,18 @@ object Reasoner {
       }
     }
     hierComps
+  }
+
+  trait QueueDelegate {
+
+    def processConcept(concept: Concept, reasoner: ReasonerState): ReasonerState
+
+    def processConceptInclusion(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState
+
+    def processSubPlus(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState
+
+    def processLink(link: Link, reasoner: ReasonerState): ReasonerState
+
   }
 
 }
