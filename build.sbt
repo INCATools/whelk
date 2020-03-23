@@ -4,7 +4,7 @@ organization  := "org.geneontology"
 
 name          := "whelk"
 
-version       := "0.4"
+version       := "0.5"
 
 publishMavenStyle := true
 
