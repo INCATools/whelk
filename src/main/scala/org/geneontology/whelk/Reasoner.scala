@@ -6,25 +6,26 @@ import org.geneontology.whelk.Reasoner.QueueDelegate
 import scala.annotation.tailrec
 
 final case class ReasonerState(
-                                hier: Map[Role, Set[Role]], // initial
-                                hierComps: Map[Role, Map[Role, List[Role]]], // initial
-                                assertions: List[ConceptInclusion],
-                                todo: List[QueueExpression],
-                                topOccursNegatively: Boolean,
-                                inits: Set[Concept], // closure
-                                assertedConceptInclusionsBySubclass: Map[Concept, List[ConceptInclusion]],
-                                closureSubsBySuperclass: Map[Concept, Set[Concept]],
-                                closureSubsBySubclass: Map[Concept, Set[Concept]],
-                                assertedNegConjs: Set[Conjunction],
-                                assertedNegConjsByOperandRight: Map[Concept, List[Conjunction]],
-                                conjunctionsBySubclassesOfRightOperand: Map[Concept, Map[Concept, Set[Conjunction]]], // Map[subclassOfRightOperand, Map[leftOperand, Conjunction]]
-                                linksBySubject: Map[Concept, Map[Role, Set[Concept]]],
-                                linksByTarget: Map[Concept, Map[Role, List[Concept]]],
-                                negExistsMapByConcept: Map[Concept, Set[ExistentialRestriction]],
-                                propagations: Map[Concept, Map[Role, List[ExistentialRestriction]]],
-                                assertedNegativeSelfRestrictionsByRole: Map[Role, SelfRestriction],
-                                ruleEngine: RuleEngine,
-                                wm: WorkingMemory,
+                                hier: Map[Role, Set[Role]] = Map.empty, // initial
+                                hierComps: Map[Role, Map[Role, List[Role]]] = Map.empty, // initial
+                                assertions: List[ConceptInclusion] = Nil,
+                                todo: List[QueueExpression] = Nil,
+                                topOccursNegatively: Boolean = false,
+                                inits: Set[Concept] = Set.empty, // closure
+                                assertedConceptInclusionsBySubclass: Map[Concept, List[ConceptInclusion]] = Map.empty,
+                                closureSubsBySuperclass: Map[Concept, Set[Concept]] = Map(Bottom -> Set.empty),
+                                closureSubsBySubclass: Map[Concept, Set[Concept]] = Map(Top -> Set.empty),
+                                assertedNegConjs: Set[Conjunction] = Set.empty,
+                                assertedNegConjsByOperandRight: Map[Concept, List[Conjunction]] = Map.empty,
+                                conjunctionsBySubclassesOfRightOperand: Map[Concept, Map[Concept, Set[Conjunction]]] = Map.empty, // Map[subclassOfRightOperand, Map[leftOperand, Conjunction]]
+                                linksBySubject: Map[Concept, Map[Role, Set[Concept]]] = Map.empty,
+                                linksByTarget: Map[Concept, Map[Role, List[Concept]]] = Map.empty,
+                                negExistsMapByConcept: Map[Concept, Set[ExistentialRestriction]] = Map.empty,
+                                propagations: Map[Concept, Map[Role, List[ExistentialRestriction]]] = Map.empty,
+                                assertedNegativeSelfRestrictionsByRole: Map[Role, SelfRestriction] = Map.empty,
+                                ruleEngine: RuleEngine = RuleEngine.empty,
+                                wm: WorkingMemory = RuleEngine.empty.emptyMemory,
+                                disableBottom: Boolean = false,
                                 queueDelegates: Map[String, QueueDelegate] = Map.empty) {
 
   def subs: Set[ConceptInclusion] = closureSubsBySuperclass.flatMap {
@@ -104,13 +105,13 @@ final case class ReasonerState(
 
 object ReasonerState {
 
-  val empty: ReasonerState = ReasonerState(Map.empty, Map.empty, Nil, Nil, false, Set.empty, Map.empty, Map(Bottom -> Set.empty), Map(Top -> Set.empty), Set.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, RuleEngine.empty, RuleEngine.empty.emptyMemory, Map.empty)
+  val empty: ReasonerState = ReasonerState()
 
 }
 
 object Reasoner {
 
-  def assert(axioms: Set[Axiom], delegates: Map[String, QueueDelegate] = Map.empty): ReasonerState = {
+  def assert(axioms: Set[Axiom], delegates: Map[String, QueueDelegate] = Map.empty, disableBottom: Boolean = false): ReasonerState = {
     import scalaz.Scalaz._
     val allRoles = axioms.flatMap(_.signature).collect { case role: Role => role }
     val allRoleInclusions = axioms.collect { case ri: RoleInclusion => ri }
@@ -123,7 +124,7 @@ object Reasoner {
     val concIncs = axioms.collect { case ci: ConceptInclusion => ci } ++ anonymousRulePredicates
     val ruleEngine = RuleEngine(rules)
     val wm = ruleEngine.emptyMemory
-    assert(concIncs, ReasonerState.empty.copy(hier = hier, hierComps = hierComps, ruleEngine = ruleEngine, wm = wm, queueDelegates = delegates))
+    assert(concIncs, ReasonerState.empty.copy(hier = hier, hierComps = hierComps, ruleEngine = ruleEngine, wm = wm, queueDelegates = delegates, disableBottom = disableBottom))
   }
 
   def assert(axioms: Set[ConceptInclusion], reasoner: ReasonerState): ReasonerState = {
@@ -265,22 +266,22 @@ object Reasoner {
     reasoner.copy(todo = todo)
   }
 
-  private[this] def `R⊥left`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = {
-    var todo = reasoner.todo
-    if (ci.superclass == Bottom) {
+  private[this] def `R⊥left`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState =
+    if (reasoner.disableBottom) reasoner
+    else if (ci.superclass == Bottom) {
+      var todo = reasoner.todo
       for {
         (_, subjects) <- reasoner.linksByTarget.getOrElse(ci.subclass, Map.empty)
         subject <- subjects
       } todo = ConceptInclusion(subject, Bottom) :: todo
       reasoner.copy(todo = todo)
     } else reasoner
-  }
 
-  private[this] def `R⊥right`(link: Link, reasoner: ReasonerState): ReasonerState = {
-    if (reasoner.closureSubsBySuperclass(Bottom)(link.target))
+  private[this] def `R⊥right`(link: Link, reasoner: ReasonerState): ReasonerState =
+    if (reasoner.disableBottom) reasoner
+    else if (reasoner.closureSubsBySuperclass(Bottom)(link.target))
       reasoner.copy(todo = ConceptInclusion(link.subject, Bottom) :: reasoner.todo)
     else reasoner
-  }
 
   private[this] def `R-⨅`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = ci match {
     case ConceptInclusion(sub, Conjunction(left, right)) => reasoner.copy(todo = ConceptInclusion(sub, left) :: ConceptInclusion(sub, right) :: reasoner.todo)
