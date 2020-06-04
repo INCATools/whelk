@@ -53,11 +53,14 @@ final case class ReasonerState(
     Nominal(subject) <- subjects
   } yield RoleAssertion(role, subject, target)).toSet
 
-  def computeTaxonomy: Map[AtomicConcept, (Set[AtomicConcept], Set[AtomicConcept])] =
-    closureSubsBySubclass.updated(Bottom, inits).collect {
-      case (c: AtomicConcept, subsumers) =>
-        c -> directSubsumers(c, subsumers + Top)
-    }
+  def computeTaxonomy: Map[AtomicConcept, (Set[AtomicConcept], Set[AtomicConcept])] = {
+    // Using the regular algorithm for Bottom takes too long
+    val directSuperClassesOfBottom = closureSubsBySuperclass.collect { case (superclass: AtomicConcept, subclasses) if (subclasses - Bottom - superclass).forall(_.isAnonymous) => superclass }.toSet
+    val equivalentsToBottom = closureSubsBySuperclass(Bottom).collect { case subclass: AtomicConcept => subclass }
+    closureSubsBySubclass.collect {
+      case (c: AtomicConcept, subsumers) => c -> directSubsumers(c, subsumers + Top)
+    } + (Bottom -> (equivalentsToBottom, directSuperClassesOfBottom))
+  }
 
   // redundant with directClassAssertions
   def individualsDirectTypes: Map[Individual, Set[AtomicConcept]] =
