@@ -462,10 +462,14 @@ object Reasoner {
   private[this] def `R∘right`(link: Link, reasoner: ReasonerState): ReasonerState = {
     var todo = reasoner.todo
     val r2s = reasoner.hierComps.getOrElse(link.role, Map.empty)
+    val linksByLinkSubject = reasoner.linksBySubject(link.subject)
     for {
       (r2, targets) <- reasoner.linksBySubject.getOrElse(link.target, Map.empty)
       s <- r2s.getOrElse(r2, Nil)
+      linksWithS = linksByLinkSubject.getOrElse(s, Set.empty)
       d <- targets
+      // This is just an optimization to reduce the number of redundant links put on the queue, which can be very large for this rule
+      if !linksWithS(d)
     } todo = Link(link.subject, s, d) :: todo
     reasoner.copy(todo = todo)
   }
