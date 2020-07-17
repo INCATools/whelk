@@ -119,7 +119,8 @@ object Bridge {
           case first :: second :: rest => Conjunction(first, convert(second :: rest))
           case first :: Nil            => first
         }
-        operands.toList.map(convertExpression).sequence.map(convert)
+        // sort to make sure we create only one conjunction for the same list of operands
+        operands.toList.sortWith((a, b) => a.compareTo(b) < 0).map(convertExpression).sequence.map(convert)
       case ObjectUnionOf(operands) =>
         operands.toList.map(convertExpression).sequence.map(_.toSet).map(Disjunction)
       case ObjectComplementOf(concept)                                => convertExpression(concept).map(Complement)

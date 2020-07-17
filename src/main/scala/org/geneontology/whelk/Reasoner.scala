@@ -404,7 +404,6 @@ object Reasoner {
     for {
       (concept, er) <- newPropagations
       (role, subjects) <- reasoner.linksByTarget.getOrElse(concept, Map.empty)
-      // This getOrElse could be removed if new roles are added to hier anytime assertions are added
       if reasoner.hier.getOrElse(role, Set.empty)(er.role)
       subject <- subjects
     } todo = `Sub+`(ConceptInclusion(subject, er)) :: todo
