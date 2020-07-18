@@ -1,19 +1,14 @@
 package org.geneontology.whelk
 
 import scala.collection.JavaConverters._
-
 import org.phenoscape.scowl._
 import org.phenoscape.scowl.ofn.SWRL
-import org.semanticweb.owlapi.model.OWLAxiom
-import org.semanticweb.owlapi.model.OWLClassExpression
-import org.semanticweb.owlapi.model.OWLOntology
+import org.semanticweb.owlapi.model.{OWLAxiom, OWLClassExpression, OWLDataHasValue, OWLOntology, SWRLAtom, SWRLIArgument}
 import org.semanticweb.owlapi.model.parameters.Imports
 import org.geneontology.whelk.owlapi.SWRLUtil
-import org.geneontology.whelk.{ Variable => WVariable }
-import org.geneontology.whelk.{ Individual => WIndividual }
+import org.geneontology.whelk.{Variable => WVariable}
+import org.geneontology.whelk.{Individual => WIndividual}
 import BuiltIn._
-import org.semanticweb.owlapi.model.SWRLAtom
-import org.semanticweb.owlapi.model.SWRLIArgument
 
 object Bridge {
 
@@ -126,6 +121,9 @@ object Bridge {
       case ObjectComplementOf(concept)                                => convertExpression(concept).map(Complement)
       case ObjectOneOf(individuals) if individuals.size == 1          => individuals.collectFirst { case NamedIndividual(iri) => Nominal(WIndividual(iri.toString)) }
       case ObjectHasValue(ObjectProperty(prop), NamedIndividual(ind)) => Some(ExistentialRestriction(Role(prop.toString), Nominal(WIndividual(ind.toString))))
+      case DataSomeValuesFrom(DataProperty(prop), range) => Some(DataRestriction(DataRole(prop.toString), DataRange(range)))
+      //scowl is missing DataHasValue
+      case dhv: OWLDataHasValue => Some(DataHasValue(DataRole(dhv.getProperty.asOWLDataProperty.getIRI.toString), dhv.getFiller))
       case _ =>
         //println(s"Not supported: $other")
         None

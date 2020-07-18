@@ -28,6 +28,8 @@ object TestInferences extends TestSuite {
       "swrl-test.ofn" - compareWhelkAndHermiT(false)
       "self-restrictions.ofn" - compareWhelkAndHermiT(false)
       "unsatisfiable.ofn" - compareWhelkAndELK()
+      "taxon-unions.ofn" - compareWhelkAndHermiT(false)
+      "unions.ofn" - compareWhelkAndHermiT(false)
     }
   }
 

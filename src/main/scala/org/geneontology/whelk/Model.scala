@@ -1,5 +1,7 @@
 package org.geneontology.whelk
 
+import org.semanticweb.owlapi.model.{OWLDataRange, OWLLiteral}
+
 sealed trait QueueExpression
 
 sealed trait Entity
@@ -19,6 +21,18 @@ final case class Role(id: String) extends Entity {
 object Role {
 
   def apply(id: String): Role = new Role(id.intern())
+
+}
+
+final case class DataRole(id: String) extends Entity {
+
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
+
+}
+
+object DataRole {
+
+  def apply(id: String): DataRole = new DataRole(id.intern())
 
 }
 
@@ -95,6 +109,39 @@ final case class ExistentialRestriction(role: Role, concept: Concept) extends Co
 }
 
 final case class SelfRestriction(role: Role) extends Concept {
+
+  def conceptSignature: Set[Concept] = Set(this)
+
+  def signature: Set[Entity] = Set(role)
+
+  def isAnonymous: Boolean = true
+
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
+
+}
+
+
+//FIXME this is just a placeholder implementation for basic reasoning with identity
+final case class DataRange(owl: OWLDataRange) {
+
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
+
+}
+
+final case class DataRestriction(role: DataRole, range: DataRange) extends Concept {
+
+  def conceptSignature: Set[Concept] = Set(this)
+
+  def signature: Set[Entity] = Set(role)
+
+  def isAnonymous: Boolean = true
+
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
+
+}
+
+//FIXME this is just a placeholder implementation for basic reasoning with identity
+final case class DataHasValue(role: DataRole, value: OWLLiteral) extends Concept {
 
   def conceptSignature: Set[Concept] = Set(this)
 
