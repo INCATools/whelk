@@ -1,52 +1,17 @@
 package org.geneontology.whelk.owlapi
 
-import java.util.Collections
-import java.util.{List => JList}
-import java.util.{Set => JSet}
-import java.util.UUID
+import java.util.{Collections, UUID, List => JList, Set => JSet}
+
+import org.geneontology.whelk.BuiltIn._
+import org.geneontology.whelk.{AtomicConcept, Bridge, ConceptInclusion, Nominal, Reasoner, ReasonerState, Role, RoleAssertion, Individual => WhelkIndividual}
+import org.phenoscape.scowl._
+import org.semanticweb.owlapi.model._
+import org.semanticweb.owlapi.reasoner._
+import org.semanticweb.owlapi.reasoner.impl.{NodeFactory, OWLClassNodeSet, OWLNamedIndividualNode, OWLNamedIndividualNodeSet}
+import org.semanticweb.owlapi.util.Version
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Queue
-
-import org.geneontology.whelk.AtomicConcept
-import org.geneontology.whelk.Bridge
-import org.geneontology.whelk.BuiltIn._
-import org.geneontology.whelk.ConceptInclusion
-import org.geneontology.whelk.Individual
-import org.geneontology.whelk.Nominal
-import org.geneontology.whelk.Reasoner
-import org.geneontology.whelk.ReasonerState
-import org.geneontology.whelk.Role
-import org.geneontology.whelk.RoleAssertion
-import org.phenoscape.scowl._
-import org.semanticweb.owlapi.model.AxiomType
-import org.semanticweb.owlapi.model.OWLAxiom
-import org.semanticweb.owlapi.model.OWLClass
-import org.semanticweb.owlapi.model.OWLClassExpression
-import org.semanticweb.owlapi.model.OWLDataProperty
-import org.semanticweb.owlapi.model.OWLDataPropertyExpression
-import org.semanticweb.owlapi.model.OWLLiteral
-import org.semanticweb.owlapi.model.OWLNamedIndividual
-import org.semanticweb.owlapi.model.OWLObjectPropertyExpression
-import org.semanticweb.owlapi.model.OWLOntology
-import org.semanticweb.owlapi.model.OWLOntologyChange
-import org.semanticweb.owlapi.model.OWLOntologyChangeListener
-import org.semanticweb.owlapi.reasoner.BufferingMode
-import org.semanticweb.owlapi.reasoner.FreshEntityPolicy
-import org.semanticweb.owlapi.reasoner.IndividualNodeSetPolicy
-import org.semanticweb.owlapi.reasoner.InferenceType
-import org.semanticweb.owlapi.reasoner.Node
-import org.semanticweb.owlapi.reasoner.NodeSet
-import org.semanticweb.owlapi.reasoner.OWLReasoner
-import org.semanticweb.owlapi.reasoner.impl.NodeFactory
-import org.semanticweb.owlapi.reasoner.impl.OWLClassNodeSet
-import org.semanticweb.owlapi.reasoner.impl.OWLNamedIndividualNodeSet
-import org.semanticweb.owlapi.util.Version
-import org.semanticweb.owlapi.model.OWLObjectPropertyAssertionAxiom
-import org.semanticweb.owlapi.reasoner.impl.OWLNamedIndividualNode
-import org.semanticweb.owlapi.model.OWLObjectProperty
-import org.semanticweb.owlapi.model.OWLIndividual
-import org.semanticweb.owlapi.model.IRI
 
 /**
  * WhelkOWLReasoner provides an OWL API OWLReasoner wrapper for Whelk.
@@ -113,14 +78,14 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
       reasoner.directlySubsumes(concept)._2
     } else reasoner.closureSubsBySuperclass.getOrElse(concept, Set.empty)
     val individuals: Set[Node[OWLNamedIndividual]] = subsumed.collect {
-      case Nominal(Individual(iri)) =>
+      case Nominal(WhelkIndividual(iri)) =>
         NodeFactory.getOWLNamedIndividualNode(NamedIndividual(iri))
     }
     new OWLNamedIndividualNodeSet(individuals.asJava)
   }
 
   override def getObjectPropertyValues(ind: OWLNamedIndividual, pe: OWLObjectPropertyExpression): NodeSet[OWLNamedIndividual] = {
-    val Ind = Individual(ind.getIRI.toString)
+    val Ind = WhelkIndividual(ind.getIRI.toString)
     val values = pe match {
       case ObjectProperty(iri)                  =>
         val Prop = Role(iri.toString)
@@ -217,7 +182,7 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
   override def getBufferingMode(): BufferingMode = bufferingMode
 
   override def getTypes(ind: OWLNamedIndividual, direct: Boolean): NodeSet[OWLClass] = {
-    val individual = Nominal(Individual(ind.getIRI.toString))
+    val individual = Nominal(WhelkIndividual(ind.getIRI.toString))
     val concepts = if (direct) whelk.directlySubsumedBy(individual)._2
     else whelk.closureSubsBySubclass.getOrElse(individual, Set.empty).collect { case ac: AtomicConcept => ac } + Top
     val classes = concepts.map { case AtomicConcept(iri) => Class(iri) }
@@ -314,7 +279,7 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
   private def freshConcept(): AtomicConcept = AtomicConcept(s"urn:uuid:${UUID.randomUUID.toString}")
 
   def getAllObjectPropertyValues(ind: OWLNamedIndividual): JSet[OWLObjectPropertyAssertionAxiom] = {
-    val Ind = Individual(ind.getIRI.toString)
+    val Ind = WhelkIndividual(ind.getIRI.toString)
     whelk.roleAssertions.collect { case RoleAssertion(prop, Ind, value) => ObjectPropertyAssertion(ObjectProperty(prop.id), ind, NamedIndividual(value.id)) }.asJava
   }
 

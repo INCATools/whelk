@@ -1,7 +1,6 @@
 package org.geneontology.whelk
 
 import org.geneontology.whelk.BuiltIn._
-import org.geneontology.whelk.Individual
 import org.phenoscape.scowl._
 import org.semanticweb.HermiT.ReasonerFactory
 import org.semanticweb.elk.owlapi.ElkReasonerFactory
