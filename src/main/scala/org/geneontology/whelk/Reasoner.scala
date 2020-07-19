@@ -10,7 +10,6 @@ final case class ReasonerState(
                                 hierComps: Map[Role, Map[Role, List[Role]]] = Map.empty, // initial
                                 assertions: List[ConceptInclusion] = Nil,
                                 todo: List[QueueExpression] = Nil,
-                                topOccursNegatively: Boolean = false,
                                 inits: Set[Concept] = Set.empty, // closure
                                 assertedConceptInclusionsBySubclass: Map[Concept, List[ConceptInclusion]] = Map.empty,
                                 closureSubsBySuperclass: Map[Concept, Set[Concept]] = Map(Bottom -> Set.empty),
