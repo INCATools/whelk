@@ -1,6 +1,6 @@
 package org.geneontology.whelk.owlapi
 
-import java.util.{Collections, UUID, List => JList, Set => JSet}
+import java.util.{UUID, List => JList, Set => JSet}
 
 import org.geneontology.whelk.BuiltIn._
 import org.geneontology.whelk.{AtomicConcept, Bridge, ConceptInclusion, Nominal, Reasoner, ReasonerState, Role, RoleAssertion, Individual => WhelkIndividual}
@@ -243,11 +243,12 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
 
   override def getPendingChanges(): JList[OWLOntologyChange] = pendingChanges.asJava
 
-  override def getPrecomputableInferenceTypes(): JSet[InferenceType] = Collections.emptySet()
+  override def getPrecomputableInferenceTypes(): JSet[InferenceType] =
+    Set(InferenceType.CLASS_ASSERTIONS, InferenceType.CLASS_HIERARCHY, InferenceType.OBJECT_PROPERTY_ASSERTIONS).asJava
 
   override def isEntailmentCheckingSupported(axiomType: AxiomType[_]): Boolean = false //FIXME should be able to handle some
 
-  override def isPrecomputed(inferenceType: InferenceType): Boolean = false
+  override def isPrecomputed(inferenceType: InferenceType): Boolean = true
 
   override def isSatisfiable(ce: OWLClassExpression): Boolean = {
     // First we handle the special case that a class assertion or object property assertion is being checked by the OWL API explanation tool.
