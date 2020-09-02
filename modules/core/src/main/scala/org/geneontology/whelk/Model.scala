@@ -1,7 +1,5 @@
 package org.geneontology.whelk
 
-import org.semanticweb.owlapi.model.{OWLDataRange, OWLLiteral}
-
 sealed trait QueueExpression
 
 sealed trait Entity
@@ -122,7 +120,7 @@ final case class SelfRestriction(role: Role) extends Concept {
 
 
 //FIXME this is just a placeholder implementation for basic reasoning with identity
-final case class DataRange(owl: OWLDataRange) {
+final case class DataRange(owl: AnyRef) {
 
   override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
 
@@ -141,7 +139,7 @@ final case class DataRestriction(role: DataRole, range: DataRange) extends Conce
 }
 
 //FIXME this is just a placeholder implementation for basic reasoning with identity
-final case class DataHasValue(role: DataRole, value: OWLLiteral) extends Concept {
+final case class DataHasValue(role: DataRole, value: AnyRef) extends Concept {
 
   def conceptSignature: Set[Concept] = Set(this)
 
