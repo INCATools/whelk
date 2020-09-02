@@ -1,7 +1,7 @@
 package org.geneontology.whelk
 
 import org.geneontology.whelk.BuiltIn._
-import org.geneontology.whelk.Individual
+import org.geneontology.whelk.{Individual => WIndividual}
 import org.phenoscape.scowl._
 import org.semanticweb.HermiT.ReasonerFactory
 import org.semanticweb.elk.owlapi.ElkReasonerFactory
@@ -73,11 +73,11 @@ object TestInferences extends TestSuite {
     val hermitConceptInclusions = terms.filterNot(_ == Top).flatMap(t => hermit.getSubClasses(Class(t.id), false).getFlattened.asScala.map(sub => ConceptInclusion(AtomicConcept(sub.getIRI.toString), t))).filterNot(_.subclass == Bottom)
     val hermitClassAssertions = (for {
       ClassAssertion(_, Class(cls), NamedIndividual(ind)) <- ontology.getAxioms(Imports.INCLUDED).asScala
-    } yield ConceptAssertion(AtomicConcept(cls.toString), Individual(ind.toString))).toSet
+    } yield ConceptAssertion(AtomicConcept(cls.toString), WIndividual(ind.toString))).toSet
       .filterNot(_.concept == Top)
     val hermitRoleAssertions = (for {
       ObjectPropertyAssertion(_, ObjectProperty(prop), NamedIndividual(subject), NamedIndividual(target)) <- ontology.getAxioms(Imports.INCLUDED).asScala
-    } yield RoleAssertion(Role(prop.toString), Individual(subject.toString), Individual(target.toString))).toSet
+    } yield RoleAssertion(Role(prop.toString), WIndividual(subject.toString), WIndividual(target.toString))).toSet
     hermit.dispose()
     val whelkClassAssertions = done.classAssertions.filterNot(_.concept == Top)
     val whelkRoleAssertions = done.roleAssertions

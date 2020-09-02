@@ -1,10 +1,7 @@
 package org.geneontology.whelk.owlapi
 
 import org.semanticweb.owlapi.model.OWLOntology
-import org.semanticweb.owlapi.reasoner.BufferingMode
-import org.semanticweb.owlapi.reasoner.OWLReasoner
-import org.semanticweb.owlapi.reasoner.OWLReasonerConfiguration
-import org.semanticweb.owlapi.reasoner.OWLReasonerFactory
+import org.semanticweb.owlapi.reasoner.{BufferingMode, OWLReasoner, OWLReasonerConfiguration, OWLReasonerFactory}
 
 class WhelkOWLReasonerFactory extends OWLReasonerFactory {
 

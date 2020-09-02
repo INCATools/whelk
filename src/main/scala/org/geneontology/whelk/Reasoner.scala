@@ -10,7 +10,6 @@ final case class ReasonerState(
                                 hierComps: Map[Role, Map[Role, List[Role]]] = Map.empty, // initial
                                 assertions: List[ConceptInclusion] = Nil,
                                 todo: List[QueueExpression] = Nil,
-                                topOccursNegatively: Boolean = false,
                                 inits: Set[Concept] = Set.empty, // closure
                                 assertedConceptInclusionsBySubclass: Map[Concept, List[ConceptInclusion]] = Map.empty,
                                 closureSubsBySuperclass: Map[Concept, Set[Concept]] = Map(Bottom -> Set.empty),
@@ -163,7 +162,7 @@ object Reasoner {
 
   private[this] def processAssertedConceptInclusion(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = {
     val updated = reasoner.assertedConceptInclusionsBySubclass.updated(ci.subclass, ci :: reasoner.assertedConceptInclusionsBySubclass.getOrElse(ci.subclass, Nil))
-    `R⊔aleft`(ci, `R⊑left`(ci, `R+∃a`(ci, `R+⨅a`(ci, `R⊤left`(ci, reasoner.copy(assertedConceptInclusionsBySubclass = updated))))))
+    `R⊔aleft`(ci, `R⊑left`(ci, `R+∃a`(ci, `R+⨅a`(ci, reasoner.copy(assertedConceptInclusionsBySubclass = updated)))))
   }
 
   private[this] def process(expression: QueueExpression, reasoner: ReasonerState): ReasonerState = {
@@ -178,7 +177,7 @@ object Reasoner {
   private[this] def processConcept(concept: Concept, reasoner: ReasonerState): ReasonerState = {
     if (reasoner.inits(concept)) reasoner
     else {
-      val newState = `R⊤right`(concept, R0(concept, reasoner.copy(inits = reasoner.inits + concept)))
+      val newState = `R⊤`(concept, R0(concept, reasoner.copy(inits = reasoner.inits + concept)))
       newState.queueDelegates.keysIterator.foldLeft(newState) { (state, delegateKey) =>
         state.queueDelegates(delegateKey).processConcept(concept, state)
       }
@@ -248,12 +247,10 @@ object Reasoner {
   private[this] def R0(concept: Concept, reasoner: ReasonerState): ReasonerState =
     reasoner.copy(todo = ConceptInclusion(concept, concept) :: reasoner.todo)
 
-  private[this] def `R⊤left`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState =
-    if (ci.subclass.signature(Top)) reasoner.copy(topOccursNegatively = true) else reasoner
-
-  private[this] def `R⊤right`(concept: Concept, reasoner: ReasonerState): ReasonerState =
-    if (reasoner.topOccursNegatively) reasoner.copy(todo = ConceptInclusion(concept, Top) :: reasoner.todo)
-    else reasoner
+  // In the ELK paper this rule is only applied if Top occurs negatively.
+  // It simplifies constructing the node taxonomy to just apply it always.
+  private[this] def `R⊤`(concept: Concept, reasoner: ReasonerState): ReasonerState =
+    reasoner.copy(todo = ConceptInclusion(concept, Top) :: reasoner.todo)
 
   private[this] def `R⊑left`(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = {
     var todo = reasoner.todo
