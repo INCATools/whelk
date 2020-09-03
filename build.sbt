@@ -1,5 +1,7 @@
 enablePlugins(JavaAppPackaging)
 
+lazy val scalazVersion = "7.3.2"
+
 lazy val commonSettings = Seq(
   organization := "org.geneontology",
   version := "0.6.1",
@@ -55,7 +57,7 @@ lazy val core = project.in(file("modules/core"))
     name := "whelk",
     description := "Whelk reasoner core",
     libraryDependencies ++= Seq(
-      "org.scalaz" %% "scalaz-core" % "7.3.2"
+      "org.scalaz" %% "scalaz-core" % scalazVersion
     )
   )
 
@@ -70,15 +72,10 @@ lazy val owlapi = project.in(file("modules/owlapi"))
     mainClass in Compile := Some("org.geneontology.whelk.Main"),
     libraryDependencies ++= Seq(
       "net.sourceforge.owlapi" % "owlapi-distribution" % "4.5.17",
-      "org.scalaz" %% "scalaz-core" % "7.3.2",
+      "org.scalaz" %% "scalaz-core" % scalazVersion,
       "org.phenoscape" %% "scowl" % "1.3.4",
       "org.semanticweb.elk" % "elk-owlapi" % "0.4.3" % Test,
       "net.sourceforge.owlapi" % "org.semanticweb.hermit" % "1.4.0.432" % Test,
       "net.sourceforge.owlapi" % "jfact" % "4.0.4" % Test
     )
   )
-
-
-
-
-
