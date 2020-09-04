@@ -67,8 +67,8 @@ lazy val owlapi = project.in(file("modules/owlapi"))
   .enablePlugins(JavaAppPackaging)
   .settings(commonSettings)
   .settings(testSettings)
-  .settings(publishSettings)
   .settings(
+    skip in publish := true,
     name := "whelk-owlapi",
     description := "Whelk reasoner OWL API bindings",
     mainClass in Compile := Some("org.geneontology.whelk.Main"),
