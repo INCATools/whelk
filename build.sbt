@@ -1,6 +1,6 @@
-enablePlugins(JavaAppPackaging)
 
 lazy val scalazVersion = "7.3.2"
+lazy val owlapiVersion = "4.5.17"
 
 lazy val commonSettings = Seq(
   organization := "org.geneontology",
@@ -46,7 +46,8 @@ lazy val parentProject = project.in(file("."))
     skip in publish := true)
   .aggregate(
     core,
-    owlapi
+    owlapi,
+    protege
   )
 
 lazy val core = project.in(file("modules/core"))
@@ -63,6 +64,7 @@ lazy val core = project.in(file("modules/core"))
 
 lazy val owlapi = project.in(file("modules/owlapi"))
   .dependsOn(core)
+  .enablePlugins(JavaAppPackaging)
   .settings(commonSettings)
   .settings(testSettings)
   .settings(publishSettings)
@@ -71,11 +73,44 @@ lazy val owlapi = project.in(file("modules/owlapi"))
     description := "Whelk reasoner OWL API bindings",
     mainClass in Compile := Some("org.geneontology.whelk.Main"),
     libraryDependencies ++= Seq(
-      "net.sourceforge.owlapi" % "owlapi-distribution" % "4.5.17",
+      "net.sourceforge.owlapi" % "owlapi-distribution" % owlapiVersion,
       "org.scalaz" %% "scalaz-core" % scalazVersion,
       "org.phenoscape" %% "scowl" % "1.3.4",
       "org.semanticweb.elk" % "elk-owlapi" % "0.4.3" % Test,
       "net.sourceforge.owlapi" % "org.semanticweb.hermit" % "1.4.0.432" % Test,
       "net.sourceforge.owlapi" % "jfact" % "4.0.4" % Test
+    )
+  )
+
+def isJarToEmbed(file: java.io.File): Boolean = file.getName match {
+  case name if name startsWith "scala" => true
+  case _                               => false
+}
+
+lazy val protege = project.in(file("modules/protege"))
+  .dependsOn(owlapi)
+  .enablePlugins(SbtOsgi)
+  .settings(commonSettings)
+  .settings(publishSettings)
+  .settings(
+    name := "whelk-protege",
+    description := "Whelk reasoner Protégé plugin",
+    // Bundle-Version is set to the version by default.
+    OsgiKeys.bundleSymbolicName := "org.geneontology.whelk;singleton:=true",
+    // Include the packages specified by privatePackage in the bundle.
+    OsgiKeys.privatePackage := Seq("org.geneontology.*"),
+    OsgiKeys.exportPackage := Seq("!*"),
+    OsgiKeys.importPackage := Seq("!org.hamcrest", "!sun.misc", "*", "sun.misc;resolution:=optional"),
+    OsgiKeys.failOnUndecidedPackage := true,
+    OsgiKeys.requireCapability := """osgi.ee;filter:="(&(osgi.ee=JavaSE)(version=1.8))"""",
+    OsgiKeys.embeddedJars := (Keys.externalDependencyClasspath in Compile).value map (_.data) filter isJarToEmbed,
+    //TODO
+    OsgiKeys.additionalHeaders := Map(
+      "Update-Url" -> "https://raw.githubusercontent.com/balhoff/whelk/master/modules/protege/update.properties"
+    ),
+    libraryDependencies ++= Seq(
+      "net.sourceforge.owlapi" % "owlapi-distribution" % owlapiVersion % Provided,
+      "edu.stanford.protege" % "protege-editor-core" % "5.2.0" % Provided,
+      "edu.stanford.protege" % "protege-editor-owl" % "5.2.0" % Provided
     )
   )

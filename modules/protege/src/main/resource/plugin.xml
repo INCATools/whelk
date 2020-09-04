@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+
+<plugin>
+    <extension id="whelk-factory" point="org.protege.editor.owl.inference_reasonerfactory">
+        <name value="Whelk"/>
+        <label value="Whelk"/>
+        <class value="org.geneontology.whelk.protege.WhelkProtegeFactory"/>
+    </extension>
+</plugin>
