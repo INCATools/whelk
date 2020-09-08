@@ -4,7 +4,7 @@ lazy val owlapiVersion = "4.5.17"
 
 lazy val commonSettings = Seq(
   organization := "org.geneontology",
-  version := "0.6.1",
+  version := "1.0",
   licenses := Seq("BSD-3-Clause" -> url("https://opensource.org/licenses/BSD-3-Clause")),
   homepage := Some(url("https://github.com/balhoff/whelk")),
   crossScalaVersions := Seq("2.12.11", "2.13.3"),
@@ -67,8 +67,8 @@ lazy val owlapi = project.in(file("modules/owlapi"))
   .enablePlugins(JavaAppPackaging)
   .settings(commonSettings)
   .settings(testSettings)
+  .settings(publishSettings)
   .settings(
-    skip in publish := true,
     name := "whelk-owlapi",
     description := "Whelk reasoner OWL API bindings",
     mainClass in Compile := Some("org.geneontology.whelk.Main"),
@@ -91,8 +91,8 @@ lazy val protege = project.in(file("modules/protege"))
   .dependsOn(owlapi)
   .enablePlugins(SbtOsgi)
   .settings(commonSettings)
-  .settings(publishSettings)
   .settings(
+    skip in publish := true,
     name := "whelk-protege",
     description := "Whelk reasoner Protégé plugin",
     // Bundle-Version is set to the version by default.
