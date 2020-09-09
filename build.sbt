@@ -57,9 +57,6 @@ lazy val core = project.in(file("modules/core"))
   .settings(
     name := "whelk",
     description := "Whelk reasoner core",
-    libraryDependencies ++= Seq(
-      "org.scalaz" %% "scalaz-core" % scalazVersion
-    )
   )
 
 lazy val owlapi = project.in(file("modules/owlapi"))
@@ -74,7 +71,6 @@ lazy val owlapi = project.in(file("modules/owlapi"))
     mainClass in Compile := Some("org.geneontology.whelk.Main"),
     libraryDependencies ++= Seq(
       "net.sourceforge.owlapi" % "owlapi-distribution" % owlapiVersion,
-      "org.scalaz" %% "scalaz-core" % scalazVersion,
       "org.phenoscape" %% "scowl" % "1.3.4",
       "org.semanticweb.elk" % "elk-owlapi" % "0.4.3" % Test,
       "net.sourceforge.owlapi" % "org.semanticweb.hermit" % "1.4.0.432" % Test,
