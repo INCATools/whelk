@@ -2,7 +2,7 @@ package org.geneontology.whelk
 
 object Util {
 
-  implicit class MapExtensions[K, V](val self: Map[K, Set[V]]) {
+  implicit class MapExtensions[K, V](val self: Map[K, Set[V]]) extends AnyVal {
 
     def |+|(other: Map[K, Set[V]]): Map[K, Set[V]] = {
       other.foldLeft(self) { case (accum, (key, set)) =>

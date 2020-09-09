@@ -8,6 +8,7 @@ import org.phenoscape.scowl.ofn.SWRL
 import org.semanticweb.owlapi.model.parameters.Imports
 import org.semanticweb.owlapi.model._
 
+import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 
 object Bridge {
@@ -126,6 +127,7 @@ object Bridge {
 
   def convertAtomSet(atoms: Set[SWRLAtom]): Option[List[RuleAtom]] = atoms.toList.map(convertRuleAtom).sequence
 
+  @tailrec
   def convertRuleAtom(atom: SWRLAtom): Option[RuleAtom] = atom match {
     case ClassAtom(ce, arg) => for {
       concept <- convertExpression(ce)
@@ -145,7 +147,7 @@ object Bridge {
     case _                                   => None
   }
 
-  implicit class ListExtensions[T](val self: List[Option[T]]) {
+  implicit class ListExtensions[T](val self: List[Option[T]]) extends AnyVal {
 
     def sequence: Option[List[T]] = if (self.contains(None)) None else Some(self.flatten)
 
