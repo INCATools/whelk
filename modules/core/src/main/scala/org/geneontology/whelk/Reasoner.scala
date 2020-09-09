@@ -1,7 +1,8 @@
 package org.geneontology.whelk
 
-import BuiltIn._
+import org.geneontology.whelk.BuiltIn._
 import org.geneontology.whelk.Reasoner.QueueDelegate
+import org.geneontology.whelk.Util.MapExtensions
 
 import scala.annotation.tailrec
 
@@ -116,7 +117,6 @@ object ReasonerState {
 object Reasoner {
 
   def assert(axioms: Set[Axiom], delegates: Map[String, QueueDelegate] = Map.empty, disableBottom: Boolean = false): ReasonerState = {
-    import scalaz.Scalaz._
     val allRoles = axioms.flatMap(_.signature).collect { case role: Role => role }
     val allRoleInclusions = axioms.collect { case ri: RoleInclusion => ri }
     val hier: Map[Role, Set[Role]] = saturateRoles(allRoleInclusions) |+| allRoles.map(r => r -> Set(r)).toMap
