@@ -1,5 +1,4 @@
 
-lazy val scalazVersion = "7.3.2"
 lazy val owlapiVersion = "4.5.17"
 
 lazy val commonSettings = Seq(
