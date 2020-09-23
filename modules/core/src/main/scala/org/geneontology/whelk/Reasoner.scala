@@ -357,11 +357,11 @@ object Reasoner {
     var conjunctionsBySubclassesOfRightOperand = reasoner.conjunctionsBySubclassesOfRightOperand
     var newSubclassesAndConjunctions: List[(Concept, Conjunction)] = Nil
     val conjunctions = reasoner.assertedNegConjsByOperandRight.getOrElse(ci.superclass, Nil)
+    val conjunctionsByLeft = conjunctionsBySubclassesOfRightOperand.getOrElse(ci.subclass, Map.empty)
     for {
       conjunction <- conjunctions
     } {
       newSubclassesAndConjunctions = (ci.subclass -> conjunction) :: newSubclassesAndConjunctions
-      val conjunctionsByLeft = conjunctionsBySubclassesOfRightOperand.getOrElse(ci.subclass, Map.empty)
       val newConjunctionsForThisLeft = conjunctionsByLeft.getOrElse(conjunction.left, Set.empty) + conjunction
       val newValue = conjunctionsByLeft.updated(conjunction.left, newConjunctionsForThisLeft)
       conjunctionsBySubclassesOfRightOperand = conjunctionsBySubclassesOfRightOperand.updated(ci.subclass, newValue)
