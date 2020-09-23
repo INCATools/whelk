@@ -3,7 +3,7 @@ lazy val owlapiVersion = "4.5.17"
 
 lazy val commonSettings = Seq(
   organization := "org.geneontology",
-  version := "1.0.1",
+  version := "1.0.2",
   licenses := Seq("BSD-3-Clause" -> url("https://opensource.org/licenses/BSD-3-Clause")),
   homepage := Some(url("https://github.com/balhoff/whelk")),
   crossScalaVersions := Seq("2.12.11", "2.13.3"),
