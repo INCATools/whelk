@@ -8,6 +8,7 @@ import scala.annotation.tailrec
 
 final case class ReasonerState(
                                 hier: Map[Role, Set[Role]] = Map.empty, // initial
+                                hierList: Map[Role, List[Role]] = Map.empty, // initial
                                 hierComps: Map[Role, Map[Role, List[Role]]] = Map.empty, // initial
                                 assertions: List[ConceptInclusion] = Nil,
                                 todo: List[QueueExpression] = Nil,
@@ -120,6 +121,7 @@ object Reasoner {
     val allRoles = axioms.flatMap(_.signature).collect { case role: Role => role }
     val allRoleInclusions = axioms.collect { case ri: RoleInclusion => ri }
     val hier: Map[Role, Set[Role]] = saturateRoles(allRoleInclusions) |+| allRoles.map(r => r -> Set(r)).toMap
+    val hierList = hier.map { case (k, v) => k -> v.toList }
     val hierComps = indexRoleCompositions(hier, axioms.collect { case rc: RoleComposition => rc })
     val rules = axioms.collect { case r: Rule => r } //TODO create rules from certain Whelk axioms
     val anonymousRulePredicates = rules.flatMap(_.body.collect {
@@ -128,7 +130,7 @@ object Reasoner {
     val concIncs = axioms.collect { case ci: ConceptInclusion => ci } ++ anonymousRulePredicates
     val ruleEngine = RuleEngine(rules)
     val wm = ruleEngine.emptyMemory
-    assert(concIncs, ReasonerState.empty.copy(hier = hier, hierComps = hierComps, ruleEngine = ruleEngine, wm = wm, queueDelegates = delegates, disableBottom = disableBottom))
+    assert(concIncs, ReasonerState.empty.copy(hier = hier, hierList = hierList, hierComps = hierComps, ruleEngine = ruleEngine, wm = wm, queueDelegates = delegates, disableBottom = disableBottom))
   }
 
   def assert(axioms: Set[ConceptInclusion], reasoner: ReasonerState): ReasonerState = {
@@ -457,7 +459,7 @@ object Reasoner {
     var todo = reasoner.todo
     val roleToER = reasoner.propagations.getOrElse(link.target, Map.empty)
     for {
-      s <- reasoner.hier.getOrElse(link.role, Set.empty)
+      s <- reasoner.hierList.getOrElse(link.role, Nil)
       f <- roleToER.getOrElse(s, Nil)
     } todo = `Sub+`(ConceptInclusion(link.subject, f)) :: todo
     reasoner.copy(todo = todo)
@@ -472,7 +474,7 @@ object Reasoner {
     case ConceptInclusion(subclass, SelfRestriction(role)) =>
       var todo = reasoner.todo
       for {
-        s <- reasoner.hier.getOrElse(role, Set.empty) //TODO this can be propagated ahead of time
+        s <- reasoner.hierList.getOrElse(role, Nil) //TODO this can be propagated ahead of time
         selfRestriction <- reasoner.assertedNegativeSelfRestrictionsByRole.get(s)
       } todo = ConceptInclusion(subclass, selfRestriction) :: todo //TODO could this be Sub+?
       reasoner.copy(todo = todo)
@@ -483,7 +485,7 @@ object Reasoner {
     case Link(subject: Nominal, role: Role, target: Nominal) if subject == target =>
       var todo = reasoner.todo
       for {
-        s <- reasoner.hier.getOrElse(role, Set.empty) //TODO this can be propagated ahead of time
+        s <- reasoner.hierList.getOrElse(role, Nil) //TODO this can be propagated ahead of time
         selfRestriction <- reasoner.assertedNegativeSelfRestrictionsByRole.get(s)
       } todo = ConceptInclusion(subject, selfRestriction) :: todo //TODO could this be Sub+?
       reasoner.copy(todo = todo)
