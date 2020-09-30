@@ -1,0 +1,74 @@
+Prefix(:=<http://example.org/>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<http://example.org/>
+
+Declaration(Class(:A))
+Declaration(Class(:B))
+Declaration(Class(:C))
+Declaration(Class(:D))
+Declaration(Class(:E))
+Declaration(Class(:EC))
+Declaration(Class(:F))
+Declaration(Class(:FandC))
+Declaration(Class(:G))
+Declaration(Class(:H))
+Declaration(Class(:HI))
+Declaration(Class(:I))
+############################
+#   Classes
+############################
+
+# Class: :B (:B)
+
+SubClassOf(:B :A)
+
+# Class: :C (:C)
+
+SubClassOf(:C :B)
+
+# Class: :D (:D)
+
+SubClassOf(:D :C)
+
+# Class: :E (:E)
+
+SubClassOf(:E :A)
+
+# Class: :EC (:EC)
+
+SubClassOf(:EC :C)
+SubClassOf(:EC :E)
+
+# Class: :F (:F)
+
+SubClassOf(:F :E)
+
+# Class: :FandC (:FandC)
+
+EquivalentClasses(:FandC ObjectIntersectionOf(:C :F))
+
+# Class: :G (:G)
+
+SubClassOf(:G :F)
+
+# Class: :H (:H)
+
+SubClassOf(:H :G)
+
+# Class: :HI (:HI)
+
+SubClassOf(:HI :H)
+SubClassOf(:HI :I)
+
+# Class: :I (:I)
+
+SubClassOf(:I :D)
+
+
+)
