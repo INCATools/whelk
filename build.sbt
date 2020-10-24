@@ -1,5 +1,5 @@
 
-lazy val owlapiVersion = "4.5.17"
+lazy val owlapiVersion = "4.5.18"
 
 lazy val commonSettings = Seq(
   organization := "org.geneontology",
