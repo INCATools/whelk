@@ -2,7 +2,7 @@ lazy val owlapiVersion = "4.5.17"
 
 lazy val commonSettings = Seq(
   organization := "org.geneontology",
-  version := "1.0.3",
+  version := "1.0.4",
   licenses := Seq("BSD-3-Clause" -> url("https://opensource.org/licenses/BSD-3-Clause")),
   homepage := Some(url("https://github.com/balhoff/whelk")),
   crossScalaVersions := Seq("2.12.11", "2.13.3"),
@@ -88,9 +88,8 @@ lazy val protege = project
   .enablePlugins(SbtOsgi)
   .settings(commonSettings)
   .settings(
-    //crossScalaVersions := Seq("2.13.3"),
     skip in publish := true,
-    name := "Whelk reasoner",
+    name := "Whelk reasoner Protege plugin",
     description := "Whelk reasoner Protégé plugin",
     // Bundle-Version is set to the version by default.
     OsgiKeys.bundleSymbolicName := "org.geneontology.whelk;singleton:=true",
