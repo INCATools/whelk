@@ -1,0 +1,47 @@
+Prefix(:=<http://example.org/>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<http://example.org/>
+
+Declaration(Class(:A))
+Declaration(Class(:B))
+Declaration(Class(:BY))
+Declaration(Class(:C))
+Declaration(Class(:X))
+Declaration(Class(:Y))
+Declaration(Class(:Z))
+############################
+#   Classes
+############################
+
+# Class: :A (:A)
+
+DisjointClasses(:A :X)
+
+# Class: :B (:B)
+
+SubClassOf(:B :A)
+
+# Class: :BY (:BY)
+
+EquivalentClasses(:BY ObjectIntersectionOf(:B :Y))
+
+# Class: :C (:C)
+
+SubClassOf(:C :B)
+
+# Class: :Y (:Y)
+
+SubClassOf(:Y :X)
+
+# Class: :Z (:Z)
+
+SubClassOf(:Z :Y)
+
+
+)

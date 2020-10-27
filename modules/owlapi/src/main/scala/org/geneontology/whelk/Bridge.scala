@@ -1,23 +1,21 @@
 package org.geneontology.whelk
 
-import scala.collection.JavaConverters._
+import org.geneontology.whelk.BuiltIn._
+import org.geneontology.whelk.owlapi.SWRLUtil
+import org.geneontology.whelk.{Individual => WIndividual, Variable => WVariable}
 import org.phenoscape.scowl._
 import org.phenoscape.scowl.ofn.SWRL
-import org.semanticweb.owlapi.model.{OWLAxiom, OWLClassExpression, OWLDataHasValue, OWLOntology, SWRLAtom, SWRLIArgument}
 import org.semanticweb.owlapi.model.parameters.Imports
-import org.geneontology.whelk.owlapi.SWRLUtil
-import org.geneontology.whelk.{Variable => WVariable}
-import org.geneontology.whelk.{Individual => WIndividual}
-import BuiltIn._
+import org.semanticweb.owlapi.model._
+
+import scala.annotation.tailrec
+import scala.collection.JavaConverters._
 
 object Bridge {
 
   object swrl extends SWRL
+  import SWRLUtil.{ClassAtom, ObjectPropertyAtom, Variable, _}
   import swrl._
-  import SWRLUtil._
-  import SWRLUtil.Variable
-  import SWRLUtil.ClassAtom
-  import SWRLUtil.ObjectPropertyAtom
 
   def ontologyToAxioms(ont: OWLOntology): Set[Axiom] = ont.getAxioms(Imports.INCLUDED).asScala.flatMap(convertAxiom).toSet
 
@@ -99,9 +97,6 @@ object Bridge {
 
   //TODO ObjectOneOf
   def convertExpression(expression: OWLClassExpression): Option[Concept] = {
-    import scalaz._
-    import Scalaz._
-    import org.geneontology.whelk.Disjunction
     expression match {
       case OWLThing => Some(Top)
       case OWLNothing => Some(Bottom)
@@ -130,12 +125,9 @@ object Bridge {
     }
   }
 
-  def convertAtomSet(atoms: Set[SWRLAtom]): Option[List[RuleAtom]] = {
-    import scalaz._
-    import Scalaz._
-    atoms.toList.map(convertRuleAtom).sequence
-  }
+  def convertAtomSet(atoms: Set[SWRLAtom]): Option[List[RuleAtom]] = atoms.toList.map(convertRuleAtom).sequence
 
+  @tailrec
   def convertRuleAtom(atom: SWRLAtom): Option[RuleAtom] = atom match {
     case ClassAtom(ce, arg) => for {
       concept <- convertExpression(ce)
@@ -153,6 +145,12 @@ object Bridge {
     case IndividualArg(NamedIndividual(iri)) => Some(WIndividual(iri.toString))
     case Variable(iri)                       => Some(WVariable(iri.toString))
     case _                                   => None
+  }
+
+  implicit class ListExtensions[T](val self: List[Option[T]]) extends AnyVal {
+
+    def sequence: Option[List[T]] = if (self.contains(None)) None else Some(self.flatten)
+
   }
 
 }
