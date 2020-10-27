@@ -107,7 +107,7 @@ lazy val protege = project
     ),
     libraryDependencies ++= Seq(
       "net.sourceforge.owlapi" % "owlapi-distribution" % owlapiVersion % Provided,
-      "edu.stanford.protege"   % "protege-editor-core" % "5.2.0"       % Provided,
-      "edu.stanford.protege"   % "protege-editor-owl"  % "5.2.0"       % Provided
+      "edu.stanford.protege"   % "protege-editor-core" % "5.5.0"       % Provided,
+      "edu.stanford.protege"   % "protege-editor-owl"  % "5.5.0"       % Provided
     )
   )
