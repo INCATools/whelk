@@ -60,7 +60,7 @@ final case class ReasonerState(
     // Using the regular algorithm for Bottom takes too long
     val directSuperClassesOfBottom = closureSubsBySuperclass.collect { case (superclass: AtomicConcept, subclasses) if (subclasses - Bottom - superclass).forall(_.isAnonymous) => superclass }.toSet
     val equivalentsToBottom = closureSubsBySuperclass(Bottom).collect { case subclass: AtomicConcept => subclass }
-    closureSubsBySubclass.collect {
+    (closureSubsBySubclass - Bottom).collect {
       case (c: AtomicConcept, subsumers) => c -> directSubsumers(c, subsumers + Top)
     } + (Bottom -> (equivalentsToBottom, directSuperClassesOfBottom))
   }
@@ -179,16 +179,20 @@ object Reasoner {
   private[this] def processConcept(concept: Concept, reasoner: ReasonerState): ReasonerState = {
     if (reasoner.inits(concept)) reasoner
     else {
-      val newState = `R⊤`(concept, R0(concept, reasoner.copy(inits = reasoner.inits + concept)))
+      val superClassesOfBottom = reasoner.closureSubsBySubclass.getOrElse(Bottom, Set.empty)
+      val updatedClosureSubsBySubclass = reasoner.closureSubsBySubclass.updated(Bottom, superClassesOfBottom + concept)
+      val newState = `R⊤`(concept, R0(concept, reasoner.copy(inits = reasoner.inits + concept, closureSubsBySubclass = updatedClosureSubsBySubclass)))
       newState.queueDelegates.keysIterator.foldLeft(newState) { (state, delegateKey) =>
         state.queueDelegates(delegateKey).processConcept(concept, state)
       }
     }
   }
 
+  private[this] val emptySubClassSet: Set[Concept] = Set(Bottom)
+
   private[this] def processConceptInclusion(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = {
     val ConceptInclusion(subclass, superclass) = ci
-    val subs = reasoner.closureSubsBySuperclass.getOrElse(superclass, Set.empty)
+    val subs = reasoner.closureSubsBySuperclass.getOrElse(superclass, emptySubClassSet)
     if (subs(subclass)) reasoner else {
       val closureSubsBySuperclass = reasoner.closureSubsBySuperclass.updated(superclass, subs + subclass)
       val supers = reasoner.closureSubsBySubclass.getOrElse(subclass, Set.empty)

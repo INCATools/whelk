@@ -66,6 +66,18 @@ object TestOWLReasoner extends TestSuite {
       reasoner.getInstances(Class("http://example.org/blah"), true)
     }
 
+    "Unsatisfiable classes should be equivalent to owl:Nothing" - {
+      val manager = OWLManager.createOWLOntologyManager()
+      val ontology = manager.loadOntologyFromOntologyDocument(this.getClass.getResourceAsStream("owl-reasoner-nothing-equiv.ofn"))
+      val reasoner = new WhelkOWLReasonerFactory().createReasoner(ontology)
+      assert(reasoner.getSubClasses(Class("http://example.org/C") and Class("http://example.org/Z"), false).isEmpty)
+      assert(reasoner.getEquivalentClasses(Class("http://example.org/C") and Class("http://example.org/Z")).getEntities.asScala.toSet == Set(OWLNothing))
+      assert(reasoner.getSubClasses(Class("http://example.org/BY"), false).isEmpty)
+      assert(reasoner.getEquivalentClasses(Class("http://example.org/BY")).getEntities.asScala.toSet == Set(OWLNothing))
+      assert(reasoner.getSubClasses(OWLNothing, false).getFlattened.isEmpty)
+      assert(reasoner.getEquivalentClasses(OWLNothing).getEntities.asScala.toSet == Set(Class("http://example.org/BY")))
+    }
+
   }
 
 }
