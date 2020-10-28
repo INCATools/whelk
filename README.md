@@ -17,6 +17,14 @@ Whelk is based on ELK, and ELK is much faster at classifying an ontology. Some r
 - SWRL rules (class and object property atoms)
 - OWL RL features for Abox
 - some classification for unions in superclass position (e.g., infer least common subsumer of operands)
+  - Example: 
+    ```
+    C SubClassOf B
+    D SubClassOf B
+    E EquivalentTo C or D
+    then
+    E SubClassOf B
+    ```
 - extended support for Self restrictions, supporting rolification
 - in application code, submitting many DL queries programmatically (Whelk is much faster at this)
 - in application code, performing many DL queries in parallel, non-blocking
