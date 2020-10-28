@@ -10,6 +10,18 @@ Whelk is implemented as an [immutable functional data structure](https://en.wiki
 
 In addition to OWL EL classification, Whelk provides OWL RL and a subset of SWRL for reasoning on individuals.
 
+## Use cases
+
+Whelk is based on ELK, and ELK is much faster at classifying an ontology. Some reasons to use Whelk include:
+- object property assertion materialization
+- SWRL rules (class and object property atoms)
+- OWL RL features for Abox
+- some classification for unions in superclass position (e.g., infer least common subsumer of operands)
+- extended support for Self restrictions, supporting rolification
+- in application code, submitting many DL queries programmatically (Whelk is much faster at this)
+- in application code, performing many DL queries in parallel, non-blocking
+- in application code, storing a reasoning state (e.g., Tbox classification) and simultaneously extending it with multiple independent new axiom sets (e.g., Aboxes); or, quickly rolling back to a previous, saved reasoning state
+
 ## Status
 
 Whelk is under development. It works, but its Scala API is in flux. A basic implementation of the OWL API OWLReasoner interface is included, but to make use of its immutability features, Whelk is best used from Scala.
