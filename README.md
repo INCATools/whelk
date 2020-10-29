@@ -25,6 +25,7 @@ Whelk is based on ELK, and ELK is much faster at classifying an ontology. Some r
     then
     E SubClassOf B
     ```
+  - *this feature is useful, but not guaranteed to be complete*
 - extended support for Self restrictions, supporting rolification
 - in application code, submitting many DL queries programmatically (Whelk is much faster at this)
 - in application code, performing many DL queries in parallel, non-blocking
