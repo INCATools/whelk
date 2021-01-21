@@ -34,7 +34,7 @@ lazy val testSettings = Seq(
   scalacOptions in Test ++= Seq("-Yrangepos", "-feature"),
   fork in Test := true,
   testFrameworks += new TestFramework("utest.runner.Framework"),
-  libraryDependencies ++= Seq("com.lihaoyi" %% "utest" % "0.7.5" % Test)
+  libraryDependencies ++= Seq("com.lihaoyi" %% "utest" % "0.7.6" % Test)
 )
 
 lazy val parentProject = project
