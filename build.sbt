@@ -45,7 +45,7 @@ lazy val parentProject = project
   .settings(commonSettings)
   .settings(name := "whelk-project", skip in publish := true)
   .aggregate(
-    core.jvm,
+    coreJVM,
     owlapi,
     protege
   )
@@ -65,9 +65,11 @@ lazy val core = crossProject(JSPlatform, JVMPlatform, NativePlatform)
     nativeConfig ~= {
       _.withLTO(LTO.thin)
         .withMode(Mode.releaseFast)
-        .withGC(GC.boehm)
+        .withGC(GC.immix)
     }
   )
+
+lazy val coreJVM = core.jvm.enablePlugins(JavaAppPackaging)
 
 lazy val owlapi = project
   .in(file("modules/owlapi"))

@@ -99,13 +99,14 @@ object Bridge {
       case ObjectSomeValuesFrom(ObjectProperty(prop), filler)            => convertExpression(filler).map(ExistentialRestriction(Role(prop.id), _))
       case ObjectHasSelf(ObjectProperty(prop))                           => Some(SelfRestriction(Role(prop.id)))
       case ObjectIntersectionOf(operands)                                =>
-        def convert(items: List[Concept]): Concept = items match {
-          case first :: second :: Nil  => Conjunction(first, second)
-          case first :: second :: rest => Conjunction(first, convert(second :: rest))
-          case first :: Nil            => first
+        def convert(items: List[Concept]): Option[Concept] = items match {
+          case first :: second :: Nil  => Some(Conjunction(first, second))
+          case first :: second :: rest => convert(second :: rest).map(right => Conjunction(first, right))
+          case first :: Nil            => Some(first)
+          case Nil                     => None
         }
         // sort to make sure we create only one conjunction for the same list of operands
-        operands.items.toList.sortBy(_.toString).map(convertExpression).sequence.map(convert)
+        operands.items.toList.sortBy(_.toString).map(convertExpression).sequence.flatMap(convert)
       case ObjectUnionOf(operands)                                       =>
         operands.items.toList.map(convertExpression).sequence.map(_.toSet).map(Disjunction)
       case ObjectComplementOf(concept)                                   => convertExpression(concept).map(Complement)
