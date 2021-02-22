@@ -15,4 +15,8 @@ export JAVA_OPTS=-Xmx16G
 # Same result with commix GC
 # With boehm GC, memory grows slowly to around 10 GB and completes reasoning step in ~600 seconds
 ## completes queries step in ~880 seconds
+####
+# UPDATE - using SCALANATIVE_MAX_SIZE=30G, it can run to completion.
+# Both immix and commix are much faster than boehm, but slower and require a lot more memory than the JVM
+# commix is faster than immix but maxes out all 8 CPUs (JVM uses <2).
 ./modules/core/.native/target/scala-2.13/whelk-out uberon-go-cl-ro.ofn
