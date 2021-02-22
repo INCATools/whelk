@@ -13,8 +13,13 @@ import java.nio.ByteBuffer
 
 object Main extends App {
 
+  val startRead = System.currentTimeMillis()
   val ontology = OWLManager.createOWLOntologyManager().loadOntology(IRI.create(new File(args(0))))
+  val stopRead = System.currentTimeMillis()
+  println(s"Read ontology in: ${stopRead - startRead} ms")
+  println(s"${ontology.getAxiomCount} OWL axioms")
   val axioms = Bridge.ontologyToAxioms(ontology)
+  println(s"${axioms.size} Whelk axioms")
   println("Start")
   val start = System.currentTimeMillis
   val done = Reasoner.assert(axioms)
