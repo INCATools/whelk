@@ -1,6 +1,7 @@
 #!/bin/bash
 
 sbt "project coreJVM" clean stage "project coreNative" clean nativeLink
+gunzip -k uberon-go-cl-ro.ofn.gz
 
 # JVM version uses about 6 GB memory
 # reasoning step completes in ~120 seconds on 2020 MacBook Pro
