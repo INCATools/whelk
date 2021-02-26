@@ -1,11 +1,15 @@
+import scala.scalanative.build._
+
 lazy val owlapiVersion = "4.5.18"
 
 lazy val commonSettings = Seq(
   organization := "org.geneontology",
-  version := "1.0.4",
+  version := "1.1",
   licenses := Seq("BSD-3-Clause" -> url("https://opensource.org/licenses/BSD-3-Clause")),
   homepage := Some(url("https://github.com/balhoff/whelk")),
-  crossScalaVersions := Seq("2.12.11", "2.13.5"),
+  scalaVersion := "2.13.4",
+  //crossScalaVersions := Seq("2.12.13", "2.13.4"),
+  crossScalaVersions := Seq("2.13.4"),
   scalacOptions := Seq("-unchecked", "-deprecation", "-encoding", "utf8")
 )
 
@@ -32,9 +36,8 @@ lazy val publishSettings = Seq(
 
 lazy val testSettings = Seq(
   scalacOptions in Test ++= Seq("-Yrangepos", "-feature"),
-  fork in Test := true,
   testFrameworks += new TestFramework("utest.runner.Framework"),
-  libraryDependencies ++= Seq("com.lihaoyi" %% "utest" % "0.7.7" % Test)
+  libraryDependencies ++= Seq("com.lihaoyi" %%% "utest" % "0.7.7" % Test)
 )
 
 lazy val parentProject = project
@@ -42,24 +45,35 @@ lazy val parentProject = project
   .settings(commonSettings)
   .settings(name := "whelk-project", skip in publish := true)
   .aggregate(
-    core,
+    coreJVM,
     owlapi,
     protege
   )
 
-lazy val core = project
+lazy val core = crossProject(JSPlatform, JVMPlatform, NativePlatform)
+  .crossType(CrossType.Pure)
   .in(file("modules/core"))
   .settings(commonSettings)
   .settings(testSettings)
   .settings(publishSettings)
   .settings(
     name := "whelk",
-    description := "Whelk reasoner core"
+    description := "Whelk reasoner core",
+    libraryDependencies ++= Seq("org.geneontology" %%% "archimedes" % "0.1.1")
   )
+  .nativeSettings(
+    nativeConfig ~= {
+      _.withLTO(LTO.thin)
+        .withMode(Mode.releaseFast)
+        .withGC(GC.immix)
+    }
+  )
+
+lazy val coreJVM = core.jvm.enablePlugins(JavaAppPackaging)
 
 lazy val owlapi = project
   .in(file("modules/owlapi"))
-  .dependsOn(core)
+  .dependsOn(core.jvm)
   .enablePlugins(JavaAppPackaging)
   .settings(commonSettings)
   .settings(testSettings)
@@ -69,17 +83,17 @@ lazy val owlapi = project
     description := "Whelk reasoner OWL API bindings",
     mainClass in Compile := Some("org.geneontology.whelk.Main"),
     libraryDependencies ++= Seq(
-      "net.sourceforge.owlapi" % "owlapi-distribution"    % owlapiVersion,
-      "org.phenoscape"        %% "scowl"                  % "1.3.4",
-      "org.semanticweb.elk"    % "elk-owlapi"             % "0.4.3"     % Test,
+      "net.sourceforge.owlapi" % "owlapi-distribution" % owlapiVersion,
+      "org.phenoscape" %% "scowl" % "1.3.4",
+      "org.semanticweb.elk" % "elk-owlapi" % "0.4.3" % Test,
       "net.sourceforge.owlapi" % "org.semanticweb.hermit" % "1.4.0.432" % Test,
-      "net.sourceforge.owlapi" % "jfact"                  % "4.0.4"     % Test
+      "net.sourceforge.owlapi" % "jfact" % "4.0.4" % Test
     )
   )
 
 def isJarToEmbed(file: java.io.File): Boolean = file.getName match {
   case name if (name startsWith "scala") || (name startsWith "scowl") => true
-  case _ => false
+  case _                                                              => false
 }
 
 lazy val protege = project
@@ -107,7 +121,7 @@ lazy val protege = project
     ),
     libraryDependencies ++= Seq(
       "net.sourceforge.owlapi" % "owlapi-distribution" % owlapiVersion % Provided,
-      "edu.stanford.protege"   % "protege-editor-core" % "5.5.0"       % Provided,
-      "edu.stanford.protege"   % "protege-editor-owl"  % "5.5.0"       % Provided
+      "edu.stanford.protege" % "protege-editor-core" % "5.5.0" % Provided,
+      "edu.stanford.protege" % "protege-editor-owl" % "5.5.0" % Provided
     )
   )
