@@ -5,6 +5,9 @@
 .idea
 .cache-tests
 .bloop
+.bsp
+.metals
+.vscode
 bin
 catalog-v001.xml
 project/project
