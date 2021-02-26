@@ -21,13 +21,13 @@ object Bridge {
       val converted = operands.items.map(convertExpression).toList.collect { case Some(concept) => concept }
       converted.combinations(2).flatMap {
         case first :: second :: Nil => Set(ConceptInclusion(first, second), ConceptInclusion(second, first))
-        case _                      => ??? //impossible
+        case _                      => Set.empty //impossible
       }.toSet
     case DisjointClasses(operands, _) if operands.items.size == 2                                                                                   => //FIXME handle >2
       val converted = operands.items.map(convertExpression).toList.collect { case Some(concept) => concept }
       converted.combinations(2).flatMap {
         case first :: second :: Nil => Set(ConceptInclusion(Conjunction(first, second), Bottom))
-        case _                      => ??? //impossible
+        case _                      => Set.empty //impossible
       }.toSet
     case ClassAssertion(cls, OWLNamedIndividual(iri), _)                                                                                            => convertExpression(cls).map(concept =>
       ConceptInclusion(Nominal(Individual(iri.id)), concept)).toSet
@@ -39,7 +39,7 @@ object Bridge {
       val properties = propertyExpressions.items.collect { case p @ ObjectProperty(_) => p }.toList
       properties.combinations(2).flatMap {
         case ObjectProperty(first) :: ObjectProperty(second) :: Nil => Set(RoleInclusion(Role(first.id), Role(second.id)))
-        case _                                                      => ??? //impossible
+        case _                                                      => Set.empty //impossible
       }.toSet
     case SubObjectPropertyOf(ObjectProperty(subproperty), ObjectProperty(superproperty), _)                                                         =>
       val sub = Role(subproperty.id)
@@ -90,7 +90,6 @@ object Bridge {
       Set.empty
   }
 
-  //TODO ObjectOneOf
   def convertExpression(expression: ClassExpression): Option[Concept] = {
     expression match {
       case OWLThing                                                      => Some(Top)
@@ -113,11 +112,8 @@ object Bridge {
       case ObjectOneOf(individuals) if individuals.items.size == 1       => individuals.items.collectFirst { case OWLNamedIndividual(iri) => Nominal(Individual(iri.id)) }
       case ObjectHasValue(ObjectProperty(prop), OWLNamedIndividual(ind)) => Some(ExistentialRestriction(Role(prop.id), Nominal(Individual(ind.id))))
       case DataSomeValuesFrom(DataProperty(prop), range)                 => Some(DataRestriction(DataRole(prop.id), DataRange(range)))
-      //scowl is missing DataHasValue
-      case OWLDataHasValue(prop, literal) => Some(DataHasValue(DataRole(prop.iri.id), literal))
-      case _                              =>
-        //println(s"Not supported: $other")
-        None
+      case OWLDataHasValue(prop, literal)                                => Some(DataHasValue(DataRole(prop.iri.id), literal))
+      case _                                                             => None
     }
   }
 
@@ -139,7 +135,7 @@ object Bridge {
 
   def convertAtomArg(arg: IArg): Option[IndividualArgument] = arg match {
     case OWLNamedIndividual(iri) => Some(Individual(iri.id))
-    case AnonymousIndividual(id) => Some(Individual(id)) //FIXME should Whelk have AnonymousIndividual?
+    case AnonymousIndividual(_)  => None
     case OWLVariable(iri)        => Some(Variable(iri.id))
   }
 
