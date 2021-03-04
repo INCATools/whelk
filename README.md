@@ -1,5 +1,3 @@
-[![Build Status](https://travis-ci.com/balhoff/whelk.svg?branch=master)](https://travis-ci.org/balhoff/whelk)
-
 <img align="right" src="https://farm7.staticflickr.com/6205/6045158767_e70d43139d_m_d.jpg">
 
 # Whelk
