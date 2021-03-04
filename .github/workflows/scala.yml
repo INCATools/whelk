@@ -21,4 +21,4 @@ jobs:
       with:
         java-version: ${{ matrix.java }}
     - name: Run tests
-      run: sbt test "project coreNative" test "project coreNative" test
+      run: sbt test "project coreNative" test "project coreJS" test
