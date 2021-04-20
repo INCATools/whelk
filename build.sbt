@@ -37,7 +37,7 @@ lazy val publishSettings = Seq(
 lazy val testSettings = Seq(
   scalacOptions in Test ++= Seq("-Yrangepos", "-feature"),
   testFrameworks += new TestFramework("utest.runner.Framework"),
-  libraryDependencies ++= Seq("com.lihaoyi" %%% "utest" % "0.7.7" % Test)
+  libraryDependencies ++= Seq("com.lihaoyi" %%% "utest" % "0.7.9" % Test)
 )
 
 lazy val parentProject = project
