@@ -1,0 +1,43 @@
+Prefix(:=<http://example.org/>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<http://example.org/>
+
+Declaration(Class(:B))
+Declaration(Class(:C))
+Declaration(Class(:D))
+Declaration(Class(:E))
+Declaration(Class(<http://example.org//A>))
+Declaration(ObjectProperty(:p))
+Declaration(ObjectProperty(:q))
+Declaration(ObjectProperty(:r))
+Declaration(ObjectProperty(:s))
+
+############################
+#   Classes
+############################
+
+# Class: :B (:B)
+
+EquivalentClasses(:B ObjectSomeValuesFrom(:q :C))
+
+# Class: :C (:C)
+
+SubClassOf(:C ObjectSomeValuesFrom(:r :D))
+
+# Class: :E (:E)
+
+EquivalentClasses(:E ObjectSomeValuesFrom(:s :D))
+
+# Class: <http://example.org//A> (<http://example.org//A>)
+
+SubClassOf(<http://example.org//A> ObjectSomeValuesFrom(:p :B))
+
+
+SubObjectPropertyOf(ObjectPropertyChain(:p :q :r) :s)
+)

@@ -30,6 +30,7 @@ object TestInferences extends TestSuite {
       "unsatisfiable.ofn" - compareWhelkAndELK()
       "taxon-unions.ofn" - compareWhelkAndHermiT(false)
       "unions.ofn" - compareWhelkAndHermiT(false)
+      "long-chains.ofn" - compareWhelkAndELK()
     }
   }
 

@@ -2,7 +2,11 @@ package org.geneontology.whelk
 
 sealed trait QueueExpression
 
-sealed trait Entity
+sealed trait Entity {
+
+  def id: String
+
+}
 
 trait HasSignature {
 
@@ -19,6 +23,8 @@ final case class Role(id: String) extends Entity {
 object Role {
 
   def apply(id: String): Role = new Role(id.intern())
+
+  val CompositionRolePrefix: String = "http://whelk.geneontology.org/composition_role/"
 
 }
 
