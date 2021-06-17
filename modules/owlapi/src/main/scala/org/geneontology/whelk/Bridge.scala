@@ -1,6 +1,7 @@
 package org.geneontology.whelk
 
 import org.geneontology.whelk.BuiltIn._
+import org.geneontology.whelk.Role.CompositionRolePrefix
 import org.geneontology.whelk.owlapi.SWRLUtil
 import org.geneontology.whelk.{Individual => WIndividual, Variable => WVariable}
 import org.phenoscape.scowl._
@@ -21,41 +22,41 @@ object Bridge {
   def ontologyToAxioms(ont: OWLOntology): Set[Axiom] = ont.getAxioms(Imports.INCLUDED).asScala.flatMap(convertAxiom).toSet
 
   def convertAxiom(owlAxiom: OWLAxiom): Set[Axiom] = owlAxiom match {
-    case SubClassOf(_, subclass, superclass)                                                                                => (convertExpression(subclass), convertExpression(superclass)) match {
+    case SubClassOf(_, subclass, superclass)                                                                                                   => (convertExpression(subclass), convertExpression(superclass)) match {
       case (Some(subConcept), Some(superConcept)) => Set(ConceptInclusion(subConcept, superConcept))
       case _                                      => Set.empty
     }
-    case EquivalentClasses(_, operands)                                                                                     =>
+    case EquivalentClasses(_, operands)                                                                                                        =>
       val converted = operands.map(convertExpression).toList.collect { case Some(concept) => concept }
       converted.combinations(2).flatMap {
         case first :: second :: Nil => Set(ConceptInclusion(first, second), ConceptInclusion(second, first))
         case _                      => ??? //impossible
       }.toSet
-    case DisjointClasses(_, operands) if operands.size == 2                                                                 => //FIXME handle >2
+    case DisjointClasses(_, operands) if operands.size == 2                                                                                    => //FIXME handle >2
       val converted = operands.map(convertExpression).toList.collect { case Some(concept) => concept }
       converted.combinations(2).flatMap {
         case first :: second :: Nil => Set(ConceptInclusion(Conjunction(first, second), Bottom))
         case _                      => ??? //impossible
       }.toSet
-    case ClassAssertion(_, cls, NamedIndividual(iri))                                                                       => convertExpression(cls).map(concept =>
+    case ClassAssertion(_, cls, NamedIndividual(iri))                                                                                          => convertExpression(cls).map(concept =>
       ConceptInclusion(Nominal(WIndividual(iri.toString)), concept)).toSet
-    case ObjectPropertyAssertion(_, ObjectProperty(prop), NamedIndividual(subj), NamedIndividual(obj))                      =>
+    case ObjectPropertyAssertion(_, ObjectProperty(prop), NamedIndividual(subj), NamedIndividual(obj))                                         =>
       Set(ConceptInclusion(Nominal(WIndividual(subj.toString)), ExistentialRestriction(Role(prop.toString), Nominal(WIndividual(obj.toString)))))
-    case ObjectPropertyAssertion(_, ObjectInverseOf(ObjectProperty(prop)), NamedIndividual(obj), NamedIndividual(subj))     =>
+    case ObjectPropertyAssertion(_, ObjectInverseOf(ObjectProperty(prop)), NamedIndividual(obj), NamedIndividual(subj))                        =>
       Set(ConceptInclusion(Nominal(WIndividual(subj.toString)), ExistentialRestriction(Role(prop.toString), Nominal(WIndividual(obj.toString)))))
-    case EquivalentObjectProperties(_, propertyExpressions)                                                                 =>
+    case EquivalentObjectProperties(_, propertyExpressions)                                                                                    =>
       val properties = propertyExpressions.collect { case p @ ObjectProperty(_) => p }.toList
       properties.combinations(2).flatMap {
         case ObjectProperty(first) :: ObjectProperty(second) :: Nil => Set(RoleInclusion(Role(first.toString), Role(second.toString)))
         case _                                                      => ??? //impossible
       }.toSet
-    case SubObjectPropertyOf(_, ObjectProperty(subproperty), ObjectProperty(superproperty))                                 =>
+    case SubObjectPropertyOf(_, ObjectProperty(subproperty), ObjectProperty(superproperty))                                                    =>
       val sub = Role(subproperty.toString)
       val sup = Role(superproperty.toString)
       Set(
         RoleInclusion(sub, sup),
         Rule(List(RoleAtom(sub, WVariable("x1"), WVariable("x2"))), List(RoleAtom(sup, WVariable("x1"), WVariable("x2")))))
-    case SubObjectPropertyChainOf(_, ObjectProperty(first) :: ObjectProperty(second) :: Nil, ObjectProperty(superproperty)) => //FIXME handle >2
+    case SubObjectPropertyChainOf(_, ObjectProperty(first) :: ObjectProperty(second) :: Nil, ObjectProperty(superproperty))                    =>
       val supRole = Role(superproperty.toString)
 
       def makeSubject(level: Int): WVariable = if (level == 0) WVariable("x") else WVariable(s"x$level")
@@ -70,30 +71,34 @@ object Bridge {
       Set(
         RoleComposition(Role(first.toString), Role(second.toString), supRole),
         Rule(body = atoms, head = List(RoleAtom(supRole, start, end))))
-    case TransitiveObjectProperty(_, ObjectProperty(property))                                                              =>
+    case SubObjectPropertyChainOf(_, (first @ ObjectProperty(_)) :: (second @ ObjectProperty(_)) :: more, (superproperty @ ObjectProperty(_))) =>
+      val compositionProperty: OWLObjectProperty = ObjectProperty(s"$CompositionRolePrefix${first.getIRI}${second.getIRI}")
+      convertAxiom(SubObjectPropertyChainOf(List(first, second), compositionProperty)) ++
+        convertAxiom(SubObjectPropertyChainOf(compositionProperty :: more, superproperty))
+    case TransitiveObjectProperty(_, ObjectProperty(property))                                                                                 =>
       val role = Role(property.toString)
       Set(
         RoleComposition(role, role, role),
         Rule(body = List(RoleAtom(role, WVariable("x1"), WVariable("x2")), RoleAtom(role, WVariable("x2"), WVariable("x3"))), head = List(RoleAtom(role, WVariable("x1"), WVariable("x3")))))
-    case ReflexiveObjectProperty(_, ObjectProperty(property))                                                               => Set(
+    case ReflexiveObjectProperty(_, ObjectProperty(property))                                                                                  => Set(
       ConceptInclusion(Top, SelfRestriction(Role(property.toString)))
     )
-    case ObjectPropertyDomain(_, ObjectProperty(property), ce)                                                              => convertExpression(ce).map(concept =>
+    case ObjectPropertyDomain(_, ObjectProperty(property), ce)                                                                                 => convertExpression(ce).map(concept =>
       ConceptInclusion(ExistentialRestriction(Role(property.toString), Top), concept)).toSet
-    case ObjectPropertyRange(_, ObjectProperty(property), ce)                                                               => convertExpression(ce).map(concept =>
+    case ObjectPropertyRange(_, ObjectProperty(property), ce)                                                                                  => convertExpression(ce).map(concept =>
       //TODO only supporting in rules for now
       Rule(body = List(RoleAtom(Role(property.toString), WVariable("x1"), WVariable("x2"))), head = List(ConceptAtom(concept, WVariable("x2"))))).toSet
-    case InverseObjectProperties(_, ObjectProperty(p), ObjectProperty(q))                                                   =>
+    case InverseObjectProperties(_, ObjectProperty(p), ObjectProperty(q))                                                                      =>
       val (roleP, roleQ) = (Role(p.toString), Role(q.toString))
       val (x1, x2) = (WVariable("x1"), WVariable("x2"))
       Set(
         Rule(body = List(RoleAtom(roleP, x1, x2)), head = List(RoleAtom(roleQ, x2, x1))),
         Rule(body = List(RoleAtom(roleQ, x1, x2)), head = List(RoleAtom(roleP, x2, x1))))
-    case DLSafeRule(_, body, head)                                                                                          => (for {
+    case DLSafeRule(_, body, head)                                                                                                             => (for {
       bodyAtoms <- convertAtomSet(body)
       headAtoms <- convertAtomSet(head)
     } yield Rule(bodyAtoms, headAtoms)).toSet
-    case _                                                                                                                  =>
+    case _                                                                                                                                     =>
       //println(s"Not supported: $other")
       Set.empty
   }

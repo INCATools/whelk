@@ -52,7 +52,7 @@ final case class ReasonerState(
 
   def roleAssertions: Set[RoleAssertion] = (for {
     (Nominal(target), links) <- linksByTarget
-    (role, subjects) <- links
+    (role, subjects) <- links.view.filterKeys(!_.id.startsWith(Role.CompositionRolePrefix))
     Nominal(subject) <- subjects
   } yield RoleAssertion(role, subject, target)).toSet
 
