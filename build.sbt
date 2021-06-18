@@ -111,7 +111,7 @@ lazy val protege = project
     // Include the packages specified by privatePackage in the bundle.
     OsgiKeys.privatePackage := Seq("org.geneontology.*"),
     OsgiKeys.exportPackage := Seq("!*"),
-    OsgiKeys.importPackage := Seq("!org.hamcrest", "!sun.misc", "*", "sun.misc;resolution:=optional"),
+    OsgiKeys.importPackage := Seq("!sourcecode", "!org.geneontology.archimedes", "!fastparse", "!fastparse.*", "!org.hamcrest", "!sun.misc", "*", "sun.misc;resolution:=optional"),
     OsgiKeys.failOnUndecidedPackage := true,
     OsgiKeys.requireCapability := """osgi.ee;filter:="(&(osgi.ee=JavaSE)(version=1.8))"""",
     OsgiKeys.embeddedJars := (Keys.externalDependencyClasspath in Compile).value map (_.data) filter isJarToEmbed,
