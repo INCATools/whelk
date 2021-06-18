@@ -7,9 +7,9 @@ lazy val commonSettings = Seq(
   version := "1.1.1",
   licenses := Seq("BSD-3-Clause" -> url("https://opensource.org/licenses/BSD-3-Clause")),
   homepage := Some(url("https://github.com/balhoff/whelk")),
-  scalaVersion := "2.13.5",
+  scalaVersion := "2.13.6",
   //crossScalaVersions := Seq("2.12.13", "2.13.4"),
-  crossScalaVersions := Seq("2.13.5"),
+  crossScalaVersions := Seq("2.13.6"),
   scalacOptions := Seq("-unchecked", "-deprecation", "-encoding", "utf8")
 )
 
