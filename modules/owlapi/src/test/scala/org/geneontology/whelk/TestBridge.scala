@@ -1,8 +1,8 @@
 package org.geneontology.whelk
 
+import org.geneontology.whelk.Bridge.ListExtensions
 import org.phenoscape.scowl._
 import utest._
-import Bridge.ListExtensions
 
 object TestBridge extends TestSuite {
 

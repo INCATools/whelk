@@ -1,10 +1,11 @@
 package org.geneontology.whelk
 
-import utest._
-import org.semanticweb.owlapi.apibinding.OWLManager
 import org.geneontology.whelk.owlapi.WhelkOWLReasonerFactory
 import org.phenoscape.scowl._
-import scala.collection.JavaConverters._
+import org.semanticweb.owlapi.apibinding.OWLManager
+import utest._
+
+import scala.jdk.CollectionConverters._
 
 object TestOWLReasoner extends TestSuite {
 

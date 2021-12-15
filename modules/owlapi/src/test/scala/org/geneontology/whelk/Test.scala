@@ -1,15 +1,13 @@
 package org.geneontology.whelk
 
-import java.io.File
-
-import scala.collection.JavaConverters._
-
+import org.geneontology.whelk.BuiltIn._
 import org.phenoscape.scowl._
 import org.semanticweb.elk.owlapi.ElkReasonerFactory
 import org.semanticweb.owlapi.apibinding.OWLManager
 import org.semanticweb.owlapi.model.IRI
 
-import BuiltIn._
+import java.io.File
+import scala.jdk.CollectionConverters._
 
 object Test extends App {
 
@@ -47,7 +45,7 @@ object Test extends App {
 
   val newDone = time("Classified query in")(Reasoner.assert(gocamAxioms, done))
   //newDone.classAssertions.foreach(println)
-  println
+  println()
 
   val RegeneratingLimbFin = AtomicConcept("http://purl.obolibrary.org/obo/UBERON_2001269")
   val PectoralFin = AtomicConcept("http://purl.obolibrary.org/obo/UBERON_0000151")

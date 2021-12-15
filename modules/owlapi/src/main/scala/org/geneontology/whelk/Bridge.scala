@@ -6,11 +6,11 @@ import org.geneontology.whelk.owlapi.SWRLUtil
 import org.geneontology.whelk.{Individual => WIndividual, Variable => WVariable}
 import org.phenoscape.scowl._
 import org.phenoscape.scowl.ofn.SWRL
-import org.semanticweb.owlapi.model.parameters.Imports
 import org.semanticweb.owlapi.model._
+import org.semanticweb.owlapi.model.parameters.Imports
 
 import scala.annotation.tailrec
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object Bridge {
 
