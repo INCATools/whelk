@@ -14,7 +14,7 @@ lazy val commonSettings = Seq(
 )
 
 lazy val publishSettings = Seq(
-  publishArtifact in Test := false,
+  Test / publishArtifact := false,
   publishMavenStyle := true,
   publishTo := {
     val nexus = "https://oss.sonatype.org/"
@@ -35,7 +35,7 @@ lazy val publishSettings = Seq(
 )
 
 lazy val testSettings = Seq(
-  scalacOptions in Test ++= Seq("-Yrangepos", "-feature"),
+  Test / scalacOptions ++= Seq("-Yrangepos", "-feature"),
   testFrameworks += new TestFramework("utest.runner.Framework"),
   libraryDependencies ++= Seq("com.lihaoyi" %%% "utest" % "0.7.10" % Test)
 )
@@ -43,7 +43,7 @@ lazy val testSettings = Seq(
 lazy val parentProject = project
   .in(file("."))
   .settings(commonSettings)
-  .settings(name := "whelk-project", skip in publish := true)
+  .settings(name := "whelk-project", publish / skip := true)
   .aggregate(
     coreJVM,
     owlapi,
@@ -81,7 +81,7 @@ lazy val owlapi = project
   .settings(
     name := "whelk-owlapi",
     description := "Whelk reasoner OWL API bindings",
-    mainClass in Compile := Some("org.geneontology.whelk.Main"),
+    Compile / mainClass := Some("org.geneontology.whelk.Main"),
     libraryDependencies ++= Seq(
       "net.sourceforge.owlapi" % "owlapi-distribution" % owlapiVersion,
       "org.phenoscape" %% "scowl" % "1.4.0",
@@ -102,7 +102,7 @@ lazy val protege = project
   .enablePlugins(SbtOsgi)
   .settings(commonSettings)
   .settings(
-    skip in publish := true,
+    publish / skip := true,
     name := "Whelk reasoner Protege plugin",
     description := "Whelk reasoner Protégé plugin",
     // Bundle-Version is set to the version by default.
@@ -114,7 +114,7 @@ lazy val protege = project
     OsgiKeys.importPackage := Seq("!sourcecode", "!org.geneontology.archimedes", "!fastparse", "!fastparse.*", "!org.hamcrest", "!sun.misc", "*", "sun.misc;resolution:=optional"),
     OsgiKeys.failOnUndecidedPackage := true,
     OsgiKeys.requireCapability := """osgi.ee;filter:="(&(osgi.ee=JavaSE)(version=1.8))"""",
-    OsgiKeys.embeddedJars := (Keys.externalDependencyClasspath in Compile).value map (_.data) filter isJarToEmbed,
+    OsgiKeys.embeddedJars := (Compile / Keys.externalDependencyClasspath).value map (_.data) filter isJarToEmbed,
     //TODO
     OsgiKeys.additionalHeaders := Map(
       "Update-Url" -> "https://raw.githubusercontent.com/balhoff/whelk/master/modules/protege/update.properties"
