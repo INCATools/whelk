@@ -11,7 +11,7 @@ import org.semanticweb.owlapi.model.parameters.Imports
 import org.semanticweb.owlapi.util._
 import utest._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object TestInferences extends TestSuite {
 

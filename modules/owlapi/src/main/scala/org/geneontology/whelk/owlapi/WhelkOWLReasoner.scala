@@ -1,7 +1,5 @@
 package org.geneontology.whelk.owlapi
 
-import java.util.{UUID, List => JList, Set => JSet}
-
 import org.geneontology.whelk.BuiltIn._
 import org.geneontology.whelk.{AtomicConcept, Bridge, ConceptInclusion, Nominal, Reasoner, ReasonerState, Role, RoleAssertion, Individual => WhelkIndividual}
 import org.phenoscape.scowl._
@@ -10,8 +8,9 @@ import org.semanticweb.owlapi.reasoner._
 import org.semanticweb.owlapi.reasoner.impl.{NodeFactory, OWLClassNodeSet, OWLNamedIndividualNode, OWLNamedIndividualNodeSet}
 import org.semanticweb.owlapi.util.Version
 
-import scala.collection.JavaConverters._
+import java.util.{UUID, List => JList, Set => JSet}
 import scala.collection.immutable.Queue
+import scala.jdk.CollectionConverters._
 
 /**
  * WhelkOWLReasoner provides an OWL API OWLReasoner wrapper for Whelk.
