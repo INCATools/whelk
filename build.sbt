@@ -1,14 +1,14 @@
 import scala.scalanative.build._
 
-lazy val owlapiVersion = "4.5.18"
+lazy val owlapiVersion = "4.5.21"
 
 lazy val commonSettings = Seq(
   organization := "org.geneontology",
   version := "1.1.1",
   licenses := Seq("BSD-3-Clause" -> url("https://opensource.org/licenses/BSD-3-Clause")),
   homepage := Some(url("https://github.com/balhoff/whelk")),
-  scalaVersion := "2.13.7",
-  crossScalaVersions := Seq("2.13.7"),
+  scalaVersion := "2.13.8",
+  crossScalaVersions := Seq("2.13.8"),
   scalacOptions := Seq("-unchecked", "-deprecation", "-encoding", "utf8")
 )
 
@@ -83,7 +83,7 @@ lazy val owlapi = project
     Compile / mainClass := Some("org.geneontology.whelk.Main"),
     libraryDependencies ++= Seq(
       "net.sourceforge.owlapi" % "owlapi-distribution" % owlapiVersion,
-      "org.phenoscape" %% "scowl" % "1.4.0",
+      "org.phenoscape" %% "scowl" % "1.4.1",
       "org.semanticweb.elk" % "elk-owlapi" % "0.4.3" % Test,
       "net.sourceforge.owlapi" % "org.semanticweb.hermit" % "1.4.0.432" % Test,
       "net.sourceforge.owlapi" % "jfact" % "4.0.4" % Test
