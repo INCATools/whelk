@@ -140,7 +140,7 @@ object Reasoner {
     val atomicConcepts = distinctConcepts.collect { case a: AtomicConcept => a }
     val additionalAxioms = distinctConcepts.flatMap {
       case d @ Disjunction(_) => `R⊔`(d)
-      case c @ Complement(_)  => `R¬`(c)
+      case c @ Complement(_)  => `R¬`(c, reasoner.disableBottom)
       case _                  => Set.empty[ConceptInclusion]
     }
     val negativeSelfRestrictions = axioms.flatMap(_.subclass.conceptSignature).collect { case sr: SelfRestriction => sr.role -> sr }.toMap
@@ -190,41 +190,43 @@ object Reasoner {
 
   private[this] val emptySubClassSet: Set[Concept] = Set(Bottom)
 
-  private[this] def processConceptInclusion(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = {
-    val ConceptInclusion(subclass, superclass) = ci
-    val subs = reasoner.closureSubsBySuperclass.getOrElse(superclass, emptySubClassSet)
-    if (subs(subclass)) reasoner else {
-      val closureSubsBySuperclass = reasoner.closureSubsBySuperclass.updated(superclass, subs + subclass)
-      val supers = reasoner.closureSubsBySubclass.getOrElse(subclass, Set.empty)
-      val closureSubsBySubclass = reasoner.closureSubsBySubclass.updated(subclass, supers + superclass)
-      val updatedReasoner = `R⊔right`(ci, `R+⟲`(ci, `R-⟲`(ci, `R⊑right`(ci, `R+∃b-right`(ci, `R-∃`(ci, `R+⨅left`(ci, `R+⨅right`(ci, `R-⨅`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass, closureSubsBySubclass = closureSubsBySubclass)))))))))))
-      val newState = ci match {
-        case ConceptInclusion(Nominal(ind), concept) => reasoner.ruleEngine.processConceptAssertion(ConceptAssertion(concept, ind), updatedReasoner)
-        case _                                       => updatedReasoner
+  private[this] def processConceptInclusion(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState =
+    if (!reasoner.disableBottom || ci.superclass != Bottom) {
+      val ConceptInclusion(subclass, superclass) = ci
+      val subs = reasoner.closureSubsBySuperclass.getOrElse(superclass, emptySubClassSet)
+      if (subs(subclass)) reasoner else {
+        val closureSubsBySuperclass = reasoner.closureSubsBySuperclass.updated(superclass, subs + subclass)
+        val supers = reasoner.closureSubsBySubclass.getOrElse(subclass, Set.empty)
+        val closureSubsBySubclass = reasoner.closureSubsBySubclass.updated(subclass, supers + superclass)
+        val updatedReasoner = `R⊔right`(ci, `R+⟲`(ci, `R-⟲`(ci, `R⊑right`(ci, `R+∃b-right`(ci, `R-∃`(ci, `R+⨅left`(ci, `R+⨅right`(ci, `R-⨅`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass, closureSubsBySubclass = closureSubsBySubclass)))))))))))
+        val newState = ci match {
+          case ConceptInclusion(Nominal(ind), concept) => reasoner.ruleEngine.processConceptAssertion(ConceptAssertion(concept, ind), updatedReasoner)
+          case _                                       => updatedReasoner
+        }
+        newState.queueDelegates.keysIterator.foldLeft(newState) { (state, delegateKey) =>
+          state.queueDelegates(delegateKey).processConceptInclusion(ci, state)
+        }
       }
-      newState.queueDelegates.keysIterator.foldLeft(newState) { (state, delegateKey) =>
-        state.queueDelegates(delegateKey).processConceptInclusion(ci, state)
-      }
-    }
-  }
+    } else reasoner
 
-  private[this] def processSubPlus(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState = {
-    val ConceptInclusion(subclass, superclass) = ci
-    val subs = reasoner.closureSubsBySuperclass.getOrElse(superclass, Set.empty)
-    if (subs(subclass)) reasoner else {
-      val closureSubsBySuperclass = reasoner.closureSubsBySuperclass.updated(superclass, subs + subclass)
-      val supers = reasoner.closureSubsBySubclass.getOrElse(subclass, Set.empty)
-      val closureSubsBySubclass = reasoner.closureSubsBySubclass.updated(subclass, supers + superclass)
-      val updatedReasoner = `R⊔right`(ci, `R-⟲`(ci, `R⊑right`(ci, `R+∃b-right`(ci, `R+⨅left`(ci, `R+⨅right`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass, closureSubsBySubclass = closureSubsBySubclass))))))))
-      val newState = ci match {
-        case ConceptInclusion(Nominal(ind), concept) => updatedReasoner.ruleEngine.processConceptAssertion(ConceptAssertion(concept, ind), updatedReasoner)
-        case _                                       => updatedReasoner
+  private[this] def processSubPlus(ci: ConceptInclusion, reasoner: ReasonerState): ReasonerState =
+    if (!reasoner.disableBottom || ci.superclass != Bottom) {
+      val ConceptInclusion(subclass, superclass) = ci
+      val subs = reasoner.closureSubsBySuperclass.getOrElse(superclass, Set.empty)
+      if (subs(subclass)) reasoner else {
+        val closureSubsBySuperclass = reasoner.closureSubsBySuperclass.updated(superclass, subs + subclass)
+        val supers = reasoner.closureSubsBySubclass.getOrElse(subclass, Set.empty)
+        val closureSubsBySubclass = reasoner.closureSubsBySubclass.updated(subclass, supers + superclass)
+        val updatedReasoner = `R⊔right`(ci, `R-⟲`(ci, `R⊑right`(ci, `R+∃b-right`(ci, `R+⨅left`(ci, `R+⨅right`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass, closureSubsBySubclass = closureSubsBySubclass))))))))
+        val newState = ci match {
+          case ConceptInclusion(Nominal(ind), concept) => updatedReasoner.ruleEngine.processConceptAssertion(ConceptAssertion(concept, ind), updatedReasoner)
+          case _                                       => updatedReasoner
+        }
+        newState.queueDelegates.keysIterator.foldLeft(newState) { (state, delegateKey) =>
+          state.queueDelegates(delegateKey).processSubPlus(ci, state)
+        }
       }
-      newState.queueDelegates.keysIterator.foldLeft(newState) { (state, delegateKey) =>
-        state.queueDelegates(delegateKey).processSubPlus(ci, state)
-      }
-    }
-  }
+    } else reasoner
 
   private[this] def processLink(link: Link, reasoner: ReasonerState): ReasonerState = {
     val Link(subject, role, target) = link
@@ -526,7 +528,8 @@ object Reasoner {
 
   private[this] def `R⊔`(d: Disjunction): Set[ConceptInclusion] = d.operands.map(o => ConceptInclusion(o, d))
 
-  private[this] def `R¬`(c: Complement): Set[ConceptInclusion] = Set(ConceptInclusion(Conjunction(c.concept, c), Bottom))
+  private[this] def `R¬`(c: Complement, disableBottom: Boolean): Set[ConceptInclusion] =
+    if (!disableBottom) Set(ConceptInclusion(Conjunction(c.concept, c), Bottom)) else Set.empty
 
   private[this] def saturateRoles(roleInclusions: Set[RoleInclusion]): Map[Role, Set[Role]] = { //FIXME can do this better?
     val subToSuper = roleInclusions.groupBy(_.subproperty).map { case (sub, ri) => sub -> ri.map(_.superproperty) }
