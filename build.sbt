@@ -124,3 +124,5 @@ lazy val protege = project
       "edu.stanford.protege" % "protege-editor-owl" % "5.5.0" % Provided
     )
   )
+
+Global / useGpg := false
