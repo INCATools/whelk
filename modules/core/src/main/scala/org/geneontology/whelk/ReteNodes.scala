@@ -1,30 +1,32 @@
 package org.geneontology.whelk
 
+import scala.collection.mutable
+
 sealed trait AlphaNode[T] {
 
   def children: List[JoinNode[T]]
 
-  def activate(item: T, reasoner: ReasonerState): ReasonerState
+  def activate(item: T, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState
 
 }
 
 final case class ConceptAtomAlphaNode(concept: Concept, children: List[JoinNode[Individual]]) extends AlphaNode[Individual] {
 
-  def activate(individual: Individual, reasoner: ReasonerState): ReasonerState = {
+  def activate(individual: Individual, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState = {
     val wm = reasoner.wm
     val alphaMem = wm.conceptAlpha(concept)
     val updatedIndividuals = alphaMem.individuals + individual
     val updatedAlphaMem = alphaMem.copy(individuals = updatedIndividuals)
     val updatedConceptAlpha = wm.conceptAlpha.updated(concept, updatedAlphaMem)
     val updatedWM = wm.copy(conceptAlpha = updatedConceptAlpha)
-    children.foldLeft(reasoner.copy(wm = updatedWM))((currentReasoner, child) => child.rightActivate(individual, currentReasoner))
+    children.foldLeft(reasoner.copy(wm = updatedWM))((currentReasoner, child) => child.rightActivate(individual, currentReasoner, todo))
   }
 
 }
 
 final case class RoleAtomAlphaNode(role: Role, children: List[JoinNode[RoleAssertion]]) extends AlphaNode[RoleAssertion] {
 
-  def activate(assertion: RoleAssertion, reasoner: ReasonerState): ReasonerState = {
+  def activate(assertion: RoleAssertion, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState = {
     val wm = reasoner.wm
     val alphaMem = wm.roleAlpha(role)
     val updatedAssertions = assertion :: alphaMem.assertions
@@ -39,7 +41,7 @@ final case class RoleAtomAlphaNode(role: Role, children: List[JoinNode[RoleAsser
     val updatedAlphaMem = alphaMem.copy(assertions = updatedAssertions, assertionsBySubject = updatedAssertionsBySubject, assertionsByTarget = updatedAssertionsByTarget)
     val updatedRoleAlpha = wm.roleAlpha.updated(role, updatedAlphaMem)
     val updatedWM = wm.copy(roleAlpha = updatedRoleAlpha)
-    children.foldLeft(reasoner.copy(wm = updatedWM))((currentReasoner, child) => child.rightActivate(assertion, currentReasoner))
+    children.foldLeft(reasoner.copy(wm = updatedWM))((currentReasoner, child) => child.rightActivate(assertion, currentReasoner, todo))
   }
 
 }
@@ -58,7 +60,7 @@ object JoinNodeSpec {
 
 sealed trait BetaNode {
 
-  def leftActivate(token: Token, reasoner: ReasonerState): ReasonerState
+  def leftActivate(token: Token, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState
 
 }
 
@@ -90,9 +92,9 @@ sealed trait JoinNode[T] extends BetaNode with BetaParent {
   protected[this] val thisPatternVariables: Set[Variable] = thisPattern.variables
   protected[this] val matchVariables: Set[Variable] = parentBoundVariables.intersect(thisPatternVariables)
 
-  def rightActivate(item: T, reasoner: ReasonerState): ReasonerState
+  def rightActivate(item: T, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState
 
-  protected[this] def activateChildren(newTokens: List[Token], reasoner: ReasonerState): ReasonerState = {
+  protected[this] def activateChildren(newTokens: List[Token], reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState = {
     newTokens.foldLeft(reasoner) { (currentReasoner, token) =>
       val localBetaMem = currentReasoner.wm.beta(spec)
       val updatedBetaTokens = token :: localBetaMem.tokens
@@ -106,7 +108,7 @@ sealed trait JoinNode[T] extends BetaNode with BetaParent {
       val updatedBeta = currentReasoner.wm.beta.updated(spec, updatedBetaMem)
       val updatedWM = currentReasoner.wm.copy(beta = updatedBeta)
       children.foldLeft(currentReasoner.copy(wm = updatedWM)) { (moreCurrentReasoner, child) =>
-        child.leftActivate(token, moreCurrentReasoner)
+        child.leftActivate(token, moreCurrentReasoner, todo)
       }
     }
   }
@@ -115,29 +117,29 @@ sealed trait JoinNode[T] extends BetaNode with BetaParent {
 
 final case class ConceptAtomJoinNode(atom: ConceptAtom, children: List[BetaNode], spec: JoinNodeSpec) extends JoinNode[Individual] {
 
-  def leftActivate(token: Token, reasoner: ReasonerState): ReasonerState = {
+  def leftActivate(token: Token, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState = {
     val alphaMem = reasoner.wm.conceptAlpha(atom.predicate)
     val newTokens = atom.argument match {
       case variable: Variable if parentBoundVariables(variable) =>
         val ind = token.bindings(variable)
         if (alphaMem.individuals(ind)) List(token) else Nil
-      case variable: Variable        => alphaMem.individuals.toList.map(i => token.extend(Map(variable -> i)))
-      case individualArg: Individual => if (alphaMem.individuals(individualArg)) List(token) else Nil
+      case variable: Variable                                   => alphaMem.individuals.toList.map(i => token.extend(Map(variable -> i)))
+      case individualArg: Individual                            => if (alphaMem.individuals(individualArg)) List(token) else Nil
     }
-    activateChildren(newTokens, reasoner)
+    activateChildren(newTokens, reasoner, todo)
   }
 
-  def rightActivate(individual: Individual, reasoner: ReasonerState): ReasonerState = {
+  def rightActivate(individual: Individual, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState = {
     val parentMem = reasoner.wm.beta(leftParentSpec)
     val newTokens = atom.argument match {
-      case variable: Variable => parentMem.tokenIndex.get(variable) match {
+      case variable: Variable                                       => parentMem.tokenIndex.get(variable) match {
         case Some(bound) => bound.getOrElse(individual, Nil).toList
         case None        => parentMem.tokens.map(_.extend(Map(variable -> individual)))
       }
       case individualArg: Individual if individualArg != individual => Nil
-      case _: Individual                                  => parentMem.tokens
+      case _: Individual                                            => parentMem.tokens
     }
-    activateChildren(newTokens, reasoner)
+    activateChildren(newTokens, reasoner, todo)
   }
 
 }
@@ -148,9 +150,9 @@ final case class RoleAtomJoinNode(atom: RoleAtom, children: List[BetaNode], spec
 
   private val makeBindings: RoleAssertion => Map[Variable, Individual] = atom match {
     case RoleAtom(_, subjectVar: Variable, targetVar: Variable) => (ra: RoleAssertion) => Map(subjectVar -> ra.subject, targetVar -> ra.target)
-    case RoleAtom(_, _, targetVar: Variable) => (ra: RoleAssertion) => Map(targetVar -> ra.target)
-    case RoleAtom(_, subjectVar: Variable, _) => (ra: RoleAssertion) => Map(subjectVar -> ra.subject)
-    case _ => (_: RoleAssertion) => Map.empty
+    case RoleAtom(_, _, targetVar: Variable)                    => (ra: RoleAssertion) => Map(targetVar -> ra.target)
+    case RoleAtom(_, subjectVar: Variable, _)                   => (ra: RoleAssertion) => Map(subjectVar -> ra.subject)
+    case _                                                      => (_: RoleAssertion) => Map.empty
   }
 
   val findTokensForAssertion: (RoleAssertion, BetaMemory) => List[Token] = (atom.subject, atom.target) match {
@@ -162,7 +164,7 @@ final case class RoleAtomJoinNode(atom: RoleAtom, children: List[BetaNode], spec
           subjectTokens.intersect(parentMem.tokenIndex(targetVariable).getOrElse(assertion.target, Set.empty)).toList
         else Nil
       }
-    case (subjectVariable: Variable, _: Variable) if parentBoundVariables(subjectVariable) =>
+    case (subjectVariable: Variable, _: Variable) if parentBoundVariables(subjectVariable)                                                      =>
       (assertion: RoleAssertion, parentMem: BetaMemory) => parentMem.tokenIndex(subjectVariable).getOrElse(assertion.subject, Set.empty).toList.map(t => t.extend(makeBindings(assertion)))
 
     case (_: Variable, targetVariable: Variable) if parentBoundVariables(targetVariable) =>
@@ -174,13 +176,13 @@ final case class RoleAtomJoinNode(atom: RoleAtom, children: List[BetaNode], spec
           parentMem.tokenIndex(subjectVariable).getOrElse(assertion.subject, Set.empty).toList.map(t => t.extend(makeBindings(assertion)))
         else Nil
       }
-    case (individualArg: Individual, targetVariable: Variable) if parentBoundVariables(targetVariable) =>
+    case (individualArg: Individual, targetVariable: Variable) if parentBoundVariables(targetVariable)   =>
       (assertion: RoleAssertion, parentMem: BetaMemory) => {
         if (individualArg == assertion.subject)
           parentMem.tokenIndex(targetVariable).getOrElse(assertion.target, Set.empty).toList.map(t => t.extend(makeBindings(assertion)))
         else Nil
       }
-    case (individualSubject: Individual, individualTarget: Individual) =>
+    case (individualSubject: Individual, individualTarget: Individual)                                   =>
       (assertion: RoleAssertion, parentMem: BetaMemory) => {
         if ((individualSubject == assertion.subject) && (individualTarget == assertion.target)) parentMem.tokens
         else Nil
@@ -200,7 +202,7 @@ final case class RoleAtomJoinNode(atom: RoleAtom, children: List[BetaNode], spec
             subjectAssertions.intersect(alphaMem.assertionsByTarget.getOrElse(token.bindings(targetVariable), Nil))
           else Nil
         }
-      case (subjectVariable: Variable, _: Variable) if parentBoundVariables(subjectVariable) =>
+      case (subjectVariable: Variable, _: Variable) if parentBoundVariables(subjectVariable)                                                      =>
         (token: Token, alphaMem: RoleAlphaMemory) =>
           alphaMem.assertionsBySubject.getOrElse(token.bindings(subjectVariable), Nil)
 
@@ -241,21 +243,21 @@ final case class RoleAtomJoinNode(atom: RoleAtom, children: List[BetaNode], spec
     }
   }
 
-  def leftActivate(token: Token, reasoner: ReasonerState): ReasonerState = {
+  def leftActivate(token: Token, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState = {
     val alphaMem = reasoner.wm.roleAlpha(atom.predicate)
     val potentialAssertions = findAssertionsForToken(token, alphaMem)
     val goodAssertions = if (subjectMustBeSameAsTarget) potentialAssertions.filter(ra => ra.subject == ra.target)
     else potentialAssertions
     val newTokens = goodAssertions.map(ra => token.extend(makeBindings(ra)))
-    activateChildren(newTokens, reasoner)
+    activateChildren(newTokens, reasoner, todo)
   }
 
-  def rightActivate(assertion: RoleAssertion, reasoner: ReasonerState): ReasonerState = {
+  def rightActivate(assertion: RoleAssertion, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState = {
     if (subjectMustBeSameAsTarget && (assertion.subject != assertion.target)) reasoner
     else {
       val parentMem = reasoner.wm.beta(leftParentSpec)
       val newTokens = findTokensForAssertion(assertion, parentMem)
-      activateChildren(newTokens, reasoner)
+      activateChildren(newTokens, reasoner, todo)
     }
   }
 
@@ -263,17 +265,18 @@ final case class RoleAtomJoinNode(atom: RoleAtom, children: List[BetaNode], spec
 
 final case class ProductionNode(rule: Rule) extends BetaNode {
 
-  def leftActivate(token: Token, reasoner: ReasonerState): ReasonerState = {
-    var todo = reasoner.todo
+  def leftActivate(token: Token, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState = {
     for {
       atom <- rule.head
     } {
       atom match {
-        case RoleAtom(role, subj, obj) => todo = Link(Nominal(fillVariable(subj, token)), role, Nominal(fillVariable(obj, token))) :: todo
-        case ConceptAtom(concept, arg) => todo = ConceptInclusion(Nominal(fillVariable(arg, token)), concept) :: todo
+        case RoleAtom(role, subj, obj) =>
+          todo.push(Link(Nominal(fillVariable(subj, token)), role, Nominal(fillVariable(obj, token))))
+        case ConceptAtom(concept, arg) =>
+          todo.push(ConceptInclusion(Nominal(fillVariable(arg, token)), concept))
       }
     }
-    reasoner.copy(todo = todo)
+    reasoner
   }
 
   private def fillVariable(arg: IndividualArgument, token: Token): Individual = arg match {

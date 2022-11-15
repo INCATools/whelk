@@ -1,10 +1,12 @@
 package org.geneontology.whelk
 
+import scala.collection.mutable
+
 final case class RuleEngine(rules: Set[Rule]) {
 
   val (conceptAlphaIndex: Map[Concept, ConceptAtomAlphaNode],
-    roleAlphaIndex: Map[Role, RoleAtomAlphaNode],
-    allJoinSpecs: Set[JoinNodeSpec]) = constructReteNetwork(rules)
+  roleAlphaIndex: Map[Role, RoleAtomAlphaNode],
+  allJoinSpecs: Set[JoinNodeSpec]) = constructReteNetwork(rules)
 
   def emptyMemory: WorkingMemory = WorkingMemory(
     conceptAlphaIndex.keys.map(c => c -> ConceptAlphaMemory.empty).toMap,
@@ -12,11 +14,11 @@ final case class RuleEngine(rules: Set[Rule]) {
     //making entries for all variables; can any getOrElse be removed?
     allJoinSpecs.map(s => s -> BetaMemory(Nil, s.pattern.flatMap(_.variables).map(_ -> Map.empty[Individual, Set[Token]]).toMap)).toMap + (JoinNodeSpec.empty -> BetaMemory(List(Token.empty), Map.empty)))
 
-  def processConceptAssertion(assertion: ConceptAssertion, reasoner: ReasonerState): ReasonerState =
-    conceptAlphaIndex.get(assertion.concept).map(node => node.activate(assertion.individual, reasoner)).getOrElse(reasoner)
+  def processConceptAssertion(assertion: ConceptAssertion, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState =
+    conceptAlphaIndex.get(assertion.concept).map(node => node.activate(assertion.individual, reasoner, todo)).getOrElse(reasoner)
 
-  def processRoleAssertion(assertion: RoleAssertion, reasoner: ReasonerState): ReasonerState =
-    roleAlphaIndex.get(assertion.role).map(node => node.activate(assertion, reasoner)).getOrElse(reasoner)
+  def processRoleAssertion(assertion: RoleAssertion, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState =
+    roleAlphaIndex.get(assertion.role).map(node => node.activate(assertion, reasoner, todo)).getOrElse(reasoner)
 
   private def constructReteNetwork(rules: Set[Rule]): (Map[Concept, ConceptAtomAlphaNode], Map[Role, RoleAtomAlphaNode], Set[JoinNodeSpec]) = {
     val nodes = rules.foldLeft(Set.empty[BetaNode]) { (nodes, rule) =>
@@ -50,12 +52,12 @@ final case class RuleEngine(rules: Set[Rule]) {
             val node = existingC.getOrElse(spec, ConceptAtomJoinNode(ca, Nil, spec))
             val updatedNode = node.copy(children = child :: node.children)
             (updatedNode, updatedExistingC.updated(spec, updatedNode), updatedExistingR)
-          case ra: RoleAtom =>
+          case ra: RoleAtom    =>
             val node = existingR.getOrElse(spec, RoleAtomJoinNode(ra, Nil, spec))
             val updatedNode = node.copy(children = child :: node.children)
             (updatedNode, updatedExistingC, updatedExistingR.updated(spec, updatedNode))
         }
-      case Nil => (ProductionNode(rule), existingC, existingR)
+      case Nil          => (ProductionNode(rule), existingC, existingR)
     }
 
   private def orderChildren[T](children: List[JoinNode[T]], ancestorMap: Map[BetaNode, Set[BetaNode]]): List[JoinNode[T]] =
