@@ -98,7 +98,8 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
   }
 
   override def getDataPropertyValues(ind: OWLNamedIndividual, dp: OWLDataProperty): JSet[OWLLiteral] =
-    throw new UnsupportedOperationException("getDataPropertyValues")
+    //throw new UnsupportedOperationException("getDataPropertyValues")
+  Set.empty[OWLLiteral].asJava
 
   override def getReasonerName(): String = "Whelk"
 
