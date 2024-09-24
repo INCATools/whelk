@@ -1,0 +1,39 @@
+Prefix(:=<http://example.org/cls-hv.ofn/>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<http://example.org/cls-hv.ofn>
+
+Declaration(Class(<http://example.org/A>))
+Declaration(ObjectProperty(<http://example.org/r>))
+Declaration(NamedIndividual(<http://example.org/x>))
+Declaration(NamedIndividual(<http://example.org/y>))
+Declaration(NamedIndividual(<http://example.org/z>))
+
+############################
+#   Classes
+############################
+
+# Class: <http://example.org/A> (<http://example.org/A>)
+
+EquivalentClasses(<http://example.org/A> ObjectHasValue(<http://example.org/r> <http://example.org/y>))
+
+
+############################
+#   Named Individuals
+############################
+
+# Individual: <http://example.org/x> (<http://example.org/x>)
+
+ClassAssertion(<http://example.org/A> <http://example.org/x>)
+
+# Individual: <http://example.org/z> (<http://example.org/z>)
+
+ObjectPropertyAssertion(<http://example.org/r> <http://example.org/z> <http://example.org/y>)
+
+
+)

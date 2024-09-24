@@ -5,7 +5,7 @@ import utest._
 
 object TestIncrementalIntersections extends TestSuite {
 
-  val tests = Tests {
+  val tests: Tests = Tests {
     "New intersection definitions should be properly classified" - {
       val manager = OWLManager.createOWLOntologyManager()
       val ontology = manager.loadOntologyFromOntologyDocument(this.getClass.getResourceAsStream("incremental-intersections.ofn"))

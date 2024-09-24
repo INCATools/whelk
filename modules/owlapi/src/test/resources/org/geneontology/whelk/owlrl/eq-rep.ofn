@@ -1,0 +1,38 @@
+Prefix(:=<http://example.org/eq-rep.ofn/>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<http://example.org/eq-rep.ofn>
+
+Declaration(Class(<http://example.org/A>))
+Declaration(Class(<http://example.org/B>))
+Declaration(ObjectProperty(<http://example.org/r>))
+Declaration(NamedIndividual(<http://example.org/w>))
+Declaration(NamedIndividual(<http://example.org/x>))
+Declaration(NamedIndividual(<http://example.org/y>))
+Declaration(NamedIndividual(<http://example.org/z>))
+
+
+############################
+#   Named Individuals
+############################
+
+# Individual: <http://example.org/w> (<http://example.org/w>)
+
+SameIndividual(<http://example.org/w> <http://example.org/x>)
+
+# Individual: <http://example.org/x> (<http://example.org/x>)
+
+ObjectPropertyAssertion(<http://example.org/r> <http://example.org/x> <http://example.org/y>)
+
+# Individual: <http://example.org/y> (<http://example.org/y>)
+
+SameIndividual(<http://example.org/y> <http://example.org/z>)
+
+
+DLSafeRule(Body(SameIndividualAtom(Variable(<urn:swrl:var#y>) <http://example.org/x>))Head(ClassAtom(<http://example.org/A> Variable(<urn:swrl:var#y>))))
+)

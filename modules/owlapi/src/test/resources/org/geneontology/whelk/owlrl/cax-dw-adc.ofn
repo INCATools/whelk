@@ -1,0 +1,57 @@
+Prefix(:=<http://example.org/cax-dw.ofn/>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<http://example.org/cax-dw.ofn>
+
+Declaration(Class(<http://example.org/A>))
+Declaration(Class(<http://example.org/B>))
+Declaration(Class(<http://example.org/C>))
+Declaration(Class(<http://example.org/D>))
+Declaration(ObjectProperty(<http://example.org/r>))
+Declaration(ObjectProperty(<http://example.org/s>))
+Declaration(NamedIndividual(<http://example.org/x>))
+Declaration(NamedIndividual(<http://example.org/y>))
+############################
+#   Object Properties
+############################
+
+# Object Property: <http://example.org/s> (<http://example.org/s>)
+
+SubObjectPropertyOf(<http://example.org/s> <http://example.org/r>)
+
+
+############################
+#   Classes
+############################
+
+# Class: <http://example.org/A> (<http://example.org/A>)
+
+
+# Class: <http://example.org/B> (<http://example.org/B>)
+
+
+# Class: <http://example.org/C> (<http://example.org/C>)
+
+
+# Class: <http://example.org/D> (<http://example.org/D>)
+
+SubClassOf(<http://example.org/D> <http://example.org/B>)
+
+
+############################
+#   Named Individuals
+############################
+
+# Individual: <http://example.org/x> (<http://example.org/x>)
+
+ClassAssertion(<http://example.org/A> <http://example.org/x>)
+ClassAssertion(<http://example.org/D> <http://example.org/x>)
+
+
+DisjointClasses(<http://example.org/A> <http://example.org/B> <http://example.org/C>)
+)

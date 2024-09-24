@@ -74,6 +74,10 @@ object BuiltIn {
 
   final val Bottom = AtomicConcept(s"$owl#Nothing")
 
+  final val SameAs = Role(s"$owl#sameAs")
+
+  final val DifferentFrom = Role(s"$owl#differentFrom")
+
 }
 
 final case class Conjunction(left: Concept, right: Concept) extends Concept {
@@ -101,6 +105,30 @@ final case class Disjunction(operands: Set[Concept]) extends Concept {
 }
 
 final case class ExistentialRestriction(role: Role, concept: Concept) extends Concept {
+
+  def conceptSignature: Set[Concept] = concept.conceptSignature + this
+
+  def signature: Set[Entity] = concept.signature + role
+
+  def isAnonymous: Boolean = true
+
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
+
+}
+
+final case class UniversalRestriction(role: Role, concept: Concept) extends Concept {
+
+  def conceptSignature: Set[Concept] = concept.conceptSignature + this
+
+  def signature: Set[Entity] = concept.signature + role
+
+  def isAnonymous: Boolean = true
+
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
+
+}
+
+final case class MaxCardinalityRestriction(role: Role, concept: Concept, cardinality: Int) extends Concept {
 
   def conceptSignature: Set[Concept] = concept.conceptSignature + this
 
@@ -257,6 +285,22 @@ final case class RoleAtom(predicate: Role, subject: IndividualArgument, target: 
   def signature: Set[Entity] = subject.signature ++ target.signature + predicate
 
   def variables: Set[Variable] = Set(subject, target).collect { case v: Variable => v }
+
+}
+
+final case class SameIndividualsAtom(left: IndividualArgument, right: IndividualArgument) extends RuleAtom {
+
+  def signature: Set[Entity] = left.signature ++ right.signature
+
+  def variables: Set[Variable] = Set(left, right).collect { case v: Variable => v }
+
+}
+
+final case class DifferentIndividualsAtom(left: IndividualArgument, right: IndividualArgument) extends RuleAtom {
+
+  def signature: Set[Entity] = left.signature ++ right.signature
+
+  def variables: Set[Variable] = Set(left, right).collect { case v: Variable => v }
 
 }
 

@@ -187,8 +187,18 @@ final case class RoleAtomJoinNode(atom: RoleAtom, children: List[BetaNode], spec
         if ((individualSubject == assertion.subject) && (individualTarget == assertion.target)) parentMem.tokens
         else Nil
       }
-    //FIXME missing ind with unbound var? both directions
-    case (_, _) => (assertion: RoleAssertion, parentMem: BetaMemory) => parentMem.tokens.map(t => t.extend(makeBindings(assertion)))
+    case (individualSubject: Individual, _: Variable)                                                    =>
+      (assertion: RoleAssertion, parentMem: BetaMemory) => {
+        if (individualSubject == assertion.subject) parentMem.tokens.map(t => t.extend(makeBindings(assertion)))
+        else Nil
+      }
+    case (_: Variable, individualTarget: Individual)                                                     =>
+      (assertion: RoleAssertion, parentMem: BetaMemory) => {
+        if (individualTarget == assertion.target) parentMem.tokens.map(t => t.extend(makeBindings(assertion)))
+        else Nil
+      }
+    case (_, _)                                                                                          => (assertion: RoleAssertion, parentMem: BetaMemory) =>
+      parentMem.tokens.map(t => t.extend(makeBindings(assertion)))
 
   }
 
@@ -270,10 +280,21 @@ final case class ProductionNode(rule: Rule) extends BetaNode {
       atom <- rule.head
     } {
       atom match {
-        case RoleAtom(role, subj, obj) =>
+        case RoleAtom(BuiltIn.SameAs, subj, obj)        =>
+          todo.push(ConceptInclusion(Nominal(fillVariable(subj, token)), Nominal(fillVariable(obj, token))))
+          todo.push(ConceptInclusion(Nominal(fillVariable(obj, token)), Nominal(fillVariable(subj, token))))
+        case RoleAtom(BuiltIn.DifferentFrom, subj, obj) =>
+          todo.push(ConceptInclusion(Conjunction(Nominal(fillVariable(subj, token)), Nominal(fillVariable(obj, token))), BuiltIn.Bottom))
+        case RoleAtom(role, subj, obj)                  =>
           todo.push(Link(Nominal(fillVariable(subj, token)), role, Nominal(fillVariable(obj, token))))
-        case ConceptAtom(concept, arg) =>
+        case ConceptAtom(concept, arg)                  =>
           todo.push(ConceptInclusion(Nominal(fillVariable(arg, token)), concept))
+        case SameIndividualsAtom(_, _)                  =>
+          ???
+        // Should never happen; SameIndividualsAtom should be internally handled as RoleAtom
+        case DifferentIndividualsAtom(_, _) =>
+          ???
+        // Should never happen; SameIndividualsAtom should be internally handled as RoleAtom
       }
     }
     reasoner
