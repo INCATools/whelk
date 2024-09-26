@@ -11,6 +11,7 @@ final case class ReasonerState(
                                 hier: Map[Role, Set[Role]] = Map.empty, // initial
                                 hierList: Map[Role, List[Role]] = Map.empty, // initial
                                 hierComps: Map[Role, Map[Role, List[Role]]] = Map.empty, // initial
+                                roleRanges: Map[Role, Concept] = Map.empty, // initial
                                 assertions: List[ConceptInclusion] = Nil,
                                 inits: Set[Concept] = Set.empty, // closure
                                 assertedConceptInclusionsBySubclass: Map[Concept, List[ConceptInclusion]] = Map.empty,
@@ -126,6 +127,13 @@ object Reasoner {
     val hier: Map[Role, Set[Role]] = saturateRoles(allRoleInclusions) |+| allRoles.map(r => r -> Set(r)).toMap
     val hierList = hier.map { case (k, v) => k -> v.toList }
     val hierComps = indexRoleCompositions(hier, axioms.collect { case rc: RoleComposition => rc })
+    val allRoleRangeAxioms = axioms.collect { case rr: RoleHasRange => rr }
+    val assertedRoleRanges = allRoleRangeAxioms.groupBy(_.role).view.mapValues(_.map(_.range)).toMap
+    val roleRanges = for {
+      (subprop, supers) <- hier
+      ranges = supers.flatMap(sup => assertedRoleRanges.get(sup).toSet.flatten)
+      if ranges.nonEmpty
+    } yield subprop -> (if (ranges.size == 1) ranges.head else ranges.reduce(Conjunction))
     val rules = axioms.collect { case r: Rule => r }
     val anonymousRulePredicates = rules.flatMap(_.body.collect {
       case ConceptAtom(concept, _) if concept.isAnonymous => ConceptInclusion(concept, Top)
@@ -133,7 +141,7 @@ object Reasoner {
     val concIncs = axioms.collect { case ci: ConceptInclusion => ci } ++ anonymousRulePredicates
     val ruleEngine = RuleEngine(rules)
     val wm = ruleEngine.emptyMemory
-    assert(concIncs, ReasonerState.empty.copy(hier = hier, hierList = hierList, hierComps = hierComps, ruleEngine = ruleEngine, wm = wm, queueDelegates = delegates, disableBottom = disableBottom))
+    assert(concIncs, ReasonerState.empty.copy(hier = hier, hierList = hierList, hierComps = hierComps, roleRanges = roleRanges, ruleEngine = ruleEngine, wm = wm, queueDelegates = delegates, disableBottom = disableBottom))
   }
 
   def assert(axioms: Set[ConceptInclusion], reasoner: ReasonerState): ReasonerState = {
@@ -267,7 +275,16 @@ object Reasoner {
   }
 
   private[this] def R0(concept: Concept, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState = {
-    todo.push(ConceptInclusion(concept, concept))
+    concept match {
+      case rt @ RoleTarget(role, target) =>
+        for {
+          range <- reasoner.roleRanges.get(role)
+        } {
+          todo.push(ConceptInclusion(rt, range))
+          todo.push(ConceptInclusion(rt, target))
+        }
+      case _                             => todo.push(ConceptInclusion(concept, concept))
+    }
     reasoner
   }
 
@@ -424,7 +441,15 @@ object Reasoner {
 
   private[this] def `R-∃`(ci: ConceptInclusion, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState = ci match {
     case ConceptInclusion(c, ExistentialRestriction(role, filler)) =>
-      todo.push(Link(c, role, filler))
+      val target = (c, filler) match {
+        case (Nominal(_), Nominal(_)) =>
+          // ranges will be handled by rete rules
+          filler
+        case _                        =>
+          if (reasoner.roleRanges.contains(role)) RoleTarget(role, filler)
+          else filler
+      }
+      todo.push(Link(c, role, target))
       reasoner
     case _                                                         => reasoner
   }
@@ -637,6 +662,9 @@ object Reasoner {
 
   private[this] def `R-⟲`(ci: ConceptInclusion, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState = ci match {
     case ConceptInclusion(sub, SelfRestriction(role)) =>
+      reasoner.roleRanges.get(role).foreach { range =>
+        todo.push(ConceptInclusion(sub, range))
+      }
       todo.push(Link(sub, role, sub))
       reasoner
     case _                                            => reasoner
