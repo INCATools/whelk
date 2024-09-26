@@ -31,6 +31,8 @@ object TestInferences extends TestSuite {
       "taxon-unions.ofn" - compareWhelkAndHermiT(false)
       "unions.ofn" - compareWhelkAndHermiT(false)
       "long-chains.ofn" - compareWhelkAndELK()
+      "part-of-arm-ranges.ofn" - compareWhelkAndHermiT(false)
+      "part-of-arm-ranges2.ofn" - compareWhelkAndHermiT(false)
       "owlrl/eq-ref.ofn" - compareWhelkAndHermiT(true)
       "owlrl/eq-sym.ofn" - compareWhelkAndHermiT(true)
       "owlrl/eq-trans.ofn" - compareWhelkAndHermiT(true)

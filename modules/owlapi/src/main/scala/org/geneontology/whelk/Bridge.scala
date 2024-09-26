@@ -133,11 +133,17 @@ object Bridge {
       Set(
         Rule(body = List(RoleAtom(role, WVariable("x"), WVariable("y")), RoleAtom(role, WVariable("y"), WVariable("x"))), head = List(ConceptAtom(BuiltIn.Bottom, WVariable("x")), ConceptAtom(BuiltIn.Bottom, WVariable("y"))))
       )
-    case ObjectPropertyDomain(_, ObjectProperty(property), ce)                                                                                 => convertExpression(ce).map(concept =>
-      ConceptInclusion(ExistentialRestriction(Role(property.toString), Top), concept)).toSet
-    case ObjectPropertyRange(_, ObjectProperty(property), ce)                                                                                  => convertExpression(ce).map(concept =>
-      //TODO only supporting in rules for now
-      Rule(body = List(RoleAtom(Role(property.toString), WVariable("x1"), WVariable("x2"))), head = List(ConceptAtom(concept, WVariable("x2"))))).toSet
+    case ObjectPropertyDomain(_, ObjectProperty(property), ce)                                                                                 =>
+      convertExpression(ce).map(concept =>
+        ConceptInclusion(ExistentialRestriction(Role(property.toString), Top), concept)).toSet
+    case ObjectPropertyRange(_, ObjectProperty(property), ce)                                                                                  =>
+      convertExpression(ce).to(Set).flatMap { concept =>
+        val role = Role(property.toString)
+        Set(
+          RoleHasRange(role, concept),
+          Rule(body = List(RoleAtom(role, WVariable("x1"), WVariable("x2"))), head = List(ConceptAtom(concept, WVariable("x2"))))
+        )
+      }
     case InverseObjectProperties(_, ObjectProperty(p), ObjectProperty(q))                                                                      =>
       val (roleP, roleQ) = (Role(p.toString), Role(q.toString))
       val (x1, x2) = (WVariable("x1"), WVariable("x2"))
