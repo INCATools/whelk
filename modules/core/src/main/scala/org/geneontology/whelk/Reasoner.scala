@@ -135,20 +135,20 @@ object Reasoner {
       if ranges.nonEmpty
     } yield subprop -> (if (ranges.size == 1) ranges.head else ranges.reduce(Conjunction))
     val rules = axioms.collect { case r: Rule => r }
+    val ruleSignature = rules.flatMap(_.signature).collect {
+      case ac: AtomicConcept => ConceptInclusion(ac, Top)
+      case i: Individual     => ConceptInclusion(Nominal(i), Top)
+    }
     val anonymousRulePredicates = rules.flatMap(_.body.collect {
       case ConceptAtom(concept, _) if concept.isAnonymous => ConceptInclusion(concept, Top)
     })
-    val concIncs = axioms.collect { case ci: ConceptInclusion => ci } ++ anonymousRulePredicates
+    val concIncs = axioms.collect { case ci: ConceptInclusion => ci } ++ anonymousRulePredicates ++ ruleSignature
     val ruleEngine = RuleEngine(rules)
     val wm = ruleEngine.emptyMemory
     assert(concIncs, ReasonerState.empty.copy(hier = hier, hierList = hierList, hierComps = hierComps, roleRanges = roleRanges, ruleEngine = ruleEngine, wm = wm, queueDelegates = delegates, disableBottom = disableBottom))
   }
 
   def assert(axioms: Set[ConceptInclusion], reasoner: ReasonerState): ReasonerState = {
-    val ruleConcepts = reasoner.ruleEngine.rules.flatMap(_.signature).collect {
-      case ac: AtomicConcept => ac
-      case i: Individual     => Nominal(i)
-    }
     val distinctConcepts = axioms.flatMap {
       case ConceptInclusion(subclass, superclass) => Set(subclass, superclass)
     }.flatMap(_.conceptSignature)
@@ -163,7 +163,7 @@ object Reasoner {
     }
     val negativeSelfRestrictions = axioms.flatMap(_.subclass.conceptSignature).collect { case sr: SelfRestriction => sr.role -> sr }.toMap
     val updatedAssertions = additionalAxioms.toList ::: axioms.toList
-    val todo = mutable.Stack.from[QueueExpression](ruleConcepts.toList ::: conceptsToQueue.toList ::: updatedAssertions)
+    val todo = mutable.Stack.from[QueueExpression](conceptsToQueue.toList ::: updatedAssertions)
     computeClosure(reasoner.copy(
       assertions = reasoner.assertions ::: updatedAssertions,
       assertedNegativeSelfRestrictionsByRole = negativeSelfRestrictions),
