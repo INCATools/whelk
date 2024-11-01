@@ -1,0 +1,41 @@
+Prefix(:=<http://example.org/prp-irp.ofn/>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(xml:=<http://www.w3.org/XML/1998/namespace>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<http://example.org/prp-irp.ofn>
+
+Declaration(Class(<http://example.org/A>))
+Declaration(Class(<http://example.org/B>))
+Declaration(ObjectProperty(<http://example.org/p>))
+Declaration(ObjectProperty(<http://example.org/q>))
+Declaration(NamedIndividual(<http://example.org/x>))
+Declaration(NamedIndividual(<http://example.org/y>))
+############################
+#   Object Properties
+############################
+
+# Object Property: <http://example.org/p> (<http://example.org/p>)
+
+SubObjectPropertyOf(<http://example.org/p> <http://example.org/q>)
+IrreflexiveObjectProperty(<http://example.org/p>)
+
+
+
+############################
+#   Named Individuals
+############################
+
+# Individual: <http://example.org/x> (<http://example.org/x>)
+
+ObjectPropertyAssertion(<http://example.org/p> <http://example.org/x> <http://example.org/x>)
+
+# Individual: <http://example.org/y> (<http://example.org/y>)
+
+ObjectPropertyAssertion(<http://example.org/q> <http://example.org/y> <http://example.org/y>)
+
+
+)

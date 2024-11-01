@@ -74,6 +74,10 @@ object BuiltIn {
 
   final val Bottom = AtomicConcept(s"$owl#Nothing")
 
+  final val SameAs = Role(s"$owl#sameAs")
+
+  final val DifferentFrom = Role(s"$owl#differentFrom")
+
 }
 
 final case class Conjunction(left: Concept, right: Concept) extends Concept {
@@ -101,6 +105,30 @@ final case class Disjunction(operands: Set[Concept]) extends Concept {
 }
 
 final case class ExistentialRestriction(role: Role, concept: Concept) extends Concept {
+
+  def conceptSignature: Set[Concept] = concept.conceptSignature + this
+
+  def signature: Set[Entity] = concept.signature + role
+
+  def isAnonymous: Boolean = true
+
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
+
+}
+
+final case class UniversalRestriction(role: Role, concept: Concept) extends Concept {
+
+  def conceptSignature: Set[Concept] = concept.conceptSignature + this
+
+  def signature: Set[Entity] = concept.signature + role
+
+  def isAnonymous: Boolean = true
+
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
+
+}
+
+final case class MaxCardinalityRestriction(role: Role, concept: Concept, cardinality: Int) extends Concept {
 
   def conceptSignature: Set[Concept] = concept.conceptSignature + this
 
@@ -177,8 +205,6 @@ final case class Individual(id: String) extends Entity with IndividualArgument {
 
 }
 
-sealed trait Axiom extends HasSignature
-
 final case class Nominal(individual: Individual) extends Concept {
 
   def conceptSignature: Set[Concept] = Set(this)
@@ -190,6 +216,21 @@ final case class Nominal(individual: Individual) extends Concept {
   override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
 
 }
+
+
+final case class RoleTarget(role: Role, concept: Concept) extends Concept {
+
+  def conceptSignature: Set[Concept] = concept.conceptSignature + this
+
+  def signature: Set[Entity] = concept.signature + role
+
+  def isAnonymous: Boolean = true
+
+  override val hashCode: Int = scala.util.hashing.MurmurHash3.productHash(this)
+
+}
+
+sealed trait Axiom extends HasSignature
 
 final case class ConceptInclusion(subclass: Concept, superclass: Concept) extends Axiom with QueueExpression {
 
@@ -206,6 +247,12 @@ final case class RoleInclusion(subproperty: Role, superproperty: Role) extends A
 final case class RoleComposition(first: Role, second: Role, superproperty: Role) extends Axiom {
 
   def signature: Set[Entity] = Set(first, second, superproperty)
+
+}
+
+final case class RoleHasRange(role: Role, range: Concept) extends Axiom {
+
+  def signature: Set[Entity] = range.signature + role
 
 }
 
@@ -257,6 +304,22 @@ final case class RoleAtom(predicate: Role, subject: IndividualArgument, target: 
   def signature: Set[Entity] = subject.signature ++ target.signature + predicate
 
   def variables: Set[Variable] = Set(subject, target).collect { case v: Variable => v }
+
+}
+
+final case class SameIndividualsAtom(left: IndividualArgument, right: IndividualArgument) extends RuleAtom {
+
+  def signature: Set[Entity] = left.signature ++ right.signature
+
+  def variables: Set[Variable] = Set(left, right).collect { case v: Variable => v }
+
+}
+
+final case class DifferentIndividualsAtom(left: IndividualArgument, right: IndividualArgument) extends RuleAtom {
+
+  def signature: Set[Entity] = left.signature ++ right.signature
+
+  def variables: Set[Variable] = Set(left, right).collect { case v: Variable => v }
 
 }
 

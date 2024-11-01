@@ -31,6 +31,37 @@ object TestInferences extends TestSuite {
       "taxon-unions.ofn" - compareWhelkAndHermiT(false)
       "unions.ofn" - compareWhelkAndHermiT(false)
       "long-chains.ofn" - compareWhelkAndELK()
+      "part-of-arm-ranges.ofn" - compareWhelkAndHermiT(false)
+      "part-of-arm-ranges2.ofn" - compareWhelkAndHermiT(false)
+      "owlrl/eq-ref.ofn" - compareWhelkAndHermiT(true)
+      "owlrl/eq-sym.ofn" - compareWhelkAndHermiT(true)
+      "owlrl/eq-trans.ofn" - compareWhelkAndHermiT(true)
+      "owlrl/eq-rep.ofn" - compareWhelkAndHermiT(true)
+      "owlrl/eq-diff.ofn" - compareWhelkAndHermiT(true, true)
+      "owlrl/prp-dom.ofn" - compareWhelkAndHermiT(true)
+      "owlrl/prp-rng.ofn" - compareWhelkAndHermiT(true)
+      "owlrl/prp-fp.ofn" - compareWhelkAndHermiT(true)
+      "owlrl/prp-ifp.ofn" - compareWhelkAndHermiT(true)
+      "owlrl/prp-irp.ofn" - compareWhelkAndHermiT(true, true)
+      "owlrl/prp-symp.ofn" - compareWhelkAndHermiT(true)
+      "owlrl/prp-asyp.ofn" - compareWhelkAndHermiT(true, true)
+      "owlrl/prp-trp.ofn" - compareWhelkAndHermiT(true)
+      "owlrl/prp-spo.ofn" - compareWhelkAndHermiT(true)
+      "owlrl/prp-eqp.ofn" - compareWhelkAndHermiT(true)
+      "owlrl/prp-pdw-adp.ofn" - compareWhelkAndHermiT(true, true)
+      "owlrl/prp-inv.ofn" - compareWhelkAndHermiT(true)
+      "owlrl/prp-npa.ofn" - compareWhelkAndHermiT(true, true)
+      "owlrl/cls-int.ofn" - compareWhelkAndHermiT(true)
+      "owlrl/cls-uni.ofn" - compareWhelkAndHermiT(true)
+      "owlrl/cls-com.ofn" - compareWhelkAndHermiT(true, true)
+      "owlrl/cls-svf.ofn" - compareWhelkAndHermiT(true)
+      "owlrl/cls-avf.ofn" - compareWhelkAndHermiT(true)
+      "owlrl/cls-hv.ofn" - compareWhelkAndHermiT(true)
+      "owlrl/cls-maxqc0.ofn" - compareWhelkAndHermiT(true, true)
+      "owlrl/cls-maxqc1.ofn" - compareWhelkAndHermiT(true)
+      "owlrl/cls-oo.ofn" - compareWhelkAndHermiT(true)
+      "owlrl/cax-sco.ofn" - compareWhelkAndHermiT(true)
+      "owlrl/cax-dw-adc.ofn" - compareWhelkAndHermiT(true, true)
     }
   }
 
@@ -57,38 +88,46 @@ object TestInferences extends TestSuite {
     assert(whelkUnsatisfiable == elkUnsatisfiable)
   }
 
-  def compareWhelkAndHermiT(aboxOnly: Boolean)(implicit path: utest.framework.TestPath): Unit = {
+  def compareWhelkAndHermiT(aboxOnly: Boolean, inconsistent: Boolean = false)(implicit path: utest.framework.TestPath): Unit = {
     val fileName = path.value.last
     val manager = OWLManager.createOWLOntologyManager()
     val ontology = manager.loadOntologyFromOntologyDocument(this.getClass.getResourceAsStream(fileName))
     val axioms = Bridge.ontologyToAxioms(ontology)
     val terms = axioms.collect { case ax: ConceptInclusion => ax }.flatMap(_.signature).collect { case e: AtomicConcept => e }
-    val done = Reasoner.assert(axioms)
+    val whelk = Reasoner.assert(axioms)
     val hermit = new ReasonerFactory().createReasoner(ontology)
-    val generator = new InferredOntologyGenerator(hermit, List[InferredAxiomGenerator[_]](
-      new InferredSubClassAxiomGenerator(),
-      new InferredEquivalentClassAxiomGenerator(),
-      new InferredPropertyAssertionGenerator(),
-      new InferredClassAssertionAxiomGenerator()).asJava)
-    generator.fillOntology(manager.getOWLDataFactory, ontology)
-    val hermitConceptInclusions = terms.filterNot(_ == Top).flatMap(t => hermit.getSubClasses(Class(t.id), false).getFlattened.asScala.map(sub => ConceptInclusion(AtomicConcept(sub.getIRI.toString), t))).filterNot(_.subclass == Bottom)
-    val hermitClassAssertions = (for {
-      ClassAssertion(_, Class(cls), NamedIndividual(ind)) <- ontology.getAxioms(Imports.INCLUDED).asScala
-    } yield ConceptAssertion(AtomicConcept(cls.toString), WIndividual(ind.toString))).toSet
-      .filterNot(_.concept == Top)
-    val hermitRoleAssertions = (for {
-      ObjectPropertyAssertion(_, ObjectProperty(prop), NamedIndividual(subject), NamedIndividual(target)) <- ontology.getAxioms(Imports.INCLUDED).asScala
-    } yield RoleAssertion(Role(prop.toString), WIndividual(subject.toString), WIndividual(target.toString))).toSet
-    hermit.dispose()
-    val whelkClassAssertions = done.classAssertions.filterNot(_.concept == Top)
-    val whelkRoleAssertions = done.roleAssertions
-    val whelkSubClassAxioms = done.subs.filter {
-      case ConceptInclusion(sub: AtomicConcept, sup: AtomicConcept) if (sub != sup && sub != Bottom && sup != Top) => true
-      case _                                                                                                       => false
+    if (inconsistent) {
+      assert(!hermit.isConsistent)
+      assert(!whelk.closureSubsBySuperclass(Bottom).forall {
+        case n: Nominal => false
+        case _          => true
+      })
+    } else {
+      val generator = new InferredOntologyGenerator(hermit, List[InferredAxiomGenerator[_]](
+        new InferredSubClassAxiomGenerator(),
+        new InferredEquivalentClassAxiomGenerator(),
+        new InferredPropertyAssertionGenerator(),
+        new InferredClassAssertionAxiomGenerator()).asJava)
+      generator.fillOntology(manager.getOWLDataFactory, ontology)
+      val hermitConceptInclusions = terms.filterNot(_ == Top).flatMap(t => hermit.getSubClasses(Class(t.id), false).getFlattened.asScala.map(sub => ConceptInclusion(AtomicConcept(sub.getIRI.toString), t))).filterNot(_.subclass == Bottom)
+      val hermitClassAssertions = (for {
+        ClassAssertion(_, Class(cls), NamedIndividual(ind)) <- ontology.getAxioms(Imports.INCLUDED).asScala
+      } yield ConceptAssertion(AtomicConcept(cls.toString), WIndividual(ind.toString))).toSet
+        .filterNot(_.concept == Top)
+      val hermitRoleAssertions = (for {
+        ObjectPropertyAssertion(_, ObjectProperty(prop), NamedIndividual(subject), NamedIndividual(target)) <- ontology.getAxioms(Imports.INCLUDED).asScala
+      } yield RoleAssertion(Role(prop.toString), WIndividual(subject.toString), WIndividual(target.toString))).toSet
+      hermit.dispose()
+      val whelkClassAssertions = whelk.classAssertions.filterNot(_.concept == Top)
+      val whelkRoleAssertions = whelk.roleAssertions
+      val whelkSubClassAxioms = whelk.subs.filter {
+        case ConceptInclusion(sub: AtomicConcept, sup: AtomicConcept) if (sub != sup && sub != Bottom && sup != Top) => true
+        case _                                                                                                       => false
+      }
+      if (!aboxOnly) assert(whelkSubClassAxioms == hermitConceptInclusions)
+      assert(whelkClassAssertions == hermitClassAssertions)
+      assert(whelkRoleAssertions == hermitRoleAssertions)
     }
-    if (!aboxOnly) assert(whelkSubClassAxioms == hermitConceptInclusions)
-    assert(whelkClassAssertions == hermitClassAssertions)
-    assert(whelkRoleAssertions == hermitRoleAssertions)
   }
 
 }

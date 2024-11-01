@@ -11,6 +11,7 @@ final case class ReasonerState(
                                 hier: Map[Role, Set[Role]] = Map.empty, // initial
                                 hierList: Map[Role, List[Role]] = Map.empty, // initial
                                 hierComps: Map[Role, Map[Role, List[Role]]] = Map.empty, // initial
+                                roleRanges: Map[Role, Concept] = Map.empty, // initial
                                 assertions: List[ConceptInclusion] = Nil,
                                 inits: Set[Concept] = Set.empty, // closure
                                 assertedConceptInclusionsBySubclass: Map[Concept, List[ConceptInclusion]] = Map.empty,
@@ -26,6 +27,9 @@ final case class ReasonerState(
                                 negExistsMapByConcept: Map[Concept, Set[ExistentialRestriction]] = Map.empty,
                                 propagations: Map[Concept, Map[Role, List[ExistentialRestriction]]] = Map.empty,
                                 assertedNegativeSelfRestrictionsByRole: Map[Role, SelfRestriction] = Map.empty,
+                                universalRestrictionTypesByRole: Map[Nominal, Map[Role, List[Concept]]] = Map.empty,
+                                maxOneCardinalityRestrictionTypesByRole: Map[Nominal, Map[Role, List[Concept]]] = Map.empty,
+                                maxOneCardinalityRestrictionTypesByFiller: Map[Concept, Map[Role, List[Nominal]]] = Map.empty,
                                 ruleEngine: RuleEngine = RuleEngine.empty,
                                 wm: WorkingMemory = RuleEngine.empty.emptyMemory,
                                 disableBottom: Boolean = false,
@@ -123,21 +127,35 @@ object Reasoner {
     val hier: Map[Role, Set[Role]] = saturateRoles(allRoleInclusions) |+| allRoles.map(r => r -> Set(r)).toMap
     val hierList = hier.map { case (k, v) => k -> v.toList }
     val hierComps = indexRoleCompositions(hier, axioms.collect { case rc: RoleComposition => rc })
-    val rules = axioms.collect { case r: Rule => r } //TODO create rules from certain Whelk axioms
+    val allRoleRangeAxioms = axioms.collect { case rr: RoleHasRange => rr }
+    val assertedRoleRanges = allRoleRangeAxioms.groupBy(_.role).view.mapValues(_.map(_.range)).toMap
+    val roleRanges = for {
+      (subprop, supers) <- hier
+      ranges = supers.flatMap(sup => assertedRoleRanges.get(sup).toSet.flatten)
+      if ranges.nonEmpty
+    } yield subprop -> (if (ranges.size == 1) ranges.head else ranges.reduce(Conjunction))
+    val rules = axioms.collect { case r: Rule => r }
+    val ruleSignature = rules.flatMap(_.signature).collect {
+      case ac: AtomicConcept => ConceptInclusion(ac, Top)
+      case i: Individual     => ConceptInclusion(Nominal(i), Top)
+    }
     val anonymousRulePredicates = rules.flatMap(_.body.collect {
       case ConceptAtom(concept, _) if concept.isAnonymous => ConceptInclusion(concept, Top)
     })
-    val concIncs = axioms.collect { case ci: ConceptInclusion => ci } ++ anonymousRulePredicates
+    val concIncs = axioms.collect { case ci: ConceptInclusion => ci } ++ anonymousRulePredicates ++ ruleSignature
     val ruleEngine = RuleEngine(rules)
     val wm = ruleEngine.emptyMemory
-    assert(concIncs, ReasonerState.empty.copy(hier = hier, hierList = hierList, hierComps = hierComps, ruleEngine = ruleEngine, wm = wm, queueDelegates = delegates, disableBottom = disableBottom))
+    assert(concIncs, ReasonerState.empty.copy(hier = hier, hierList = hierList, hierComps = hierComps, roleRanges = roleRanges, ruleEngine = ruleEngine, wm = wm, queueDelegates = delegates, disableBottom = disableBottom))
   }
 
   def assert(axioms: Set[ConceptInclusion], reasoner: ReasonerState): ReasonerState = {
     val distinctConcepts = axioms.flatMap {
       case ConceptInclusion(subclass, superclass) => Set(subclass, superclass)
     }.flatMap(_.conceptSignature)
-    val atomicConcepts = distinctConcepts.collect { case a: AtomicConcept => a }
+    val conceptsToQueue = distinctConcepts.collect {
+      case a: AtomicConcept => a
+      case n: Nominal       => n
+    }
     val additionalAxioms = distinctConcepts.flatMap {
       case d @ Disjunction(_) => `R⊔`(d)
       case c @ Complement(_)  => `R¬`(c, reasoner.disableBottom)
@@ -145,7 +163,7 @@ object Reasoner {
     }
     val negativeSelfRestrictions = axioms.flatMap(_.subclass.conceptSignature).collect { case sr: SelfRestriction => sr.role -> sr }.toMap
     val updatedAssertions = additionalAxioms.toList ::: axioms.toList
-    val todo = mutable.Stack.from[QueueExpression](atomicConcepts.toList ::: updatedAssertions)
+    val todo = mutable.Stack.from[QueueExpression](conceptsToQueue.toList ::: updatedAssertions)
     computeClosure(reasoner.copy(
       assertions = reasoner.assertions ::: updatedAssertions,
       assertedNegativeSelfRestrictionsByRole = negativeSelfRestrictions),
@@ -199,10 +217,12 @@ object Reasoner {
         val closureSubsBySuperclass = reasoner.closureSubsBySuperclass.updated(superclass, subs + subclass)
         val supers = reasoner.closureSubsBySubclass.getOrElse(subclass, Set.empty)
         val closureSubsBySubclass = reasoner.closureSubsBySubclass.updated(subclass, supers + superclass)
-        val updatedReasoner = `R⊔right`(ci, `R+⟲`(ci, `R-⟲`(ci, `R⊑right`(ci, `R+∃b-right`(ci, `R-∃`(ci, `R+⨅left`(ci, `R+⨅right`(ci, `R-⨅`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass, closureSubsBySubclass = closureSubsBySubclass), todo), todo), todo), todo), todo), todo), todo), todo), todo))
+        val updatedReasoner = `R≤1-c`(ci, `R≤1-a`(ci, `R∀-left`(ci, `R∃ind-left`(ci, `R⊔right`(ci, `R+⟲`(ci, `R-⟲`(ci, `R⊑right`(ci, `R+∃b-right`(ci, `R-∃`(ci, `R+⨅left`(ci, `R+⨅right`(ci, `R-⨅`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass, closureSubsBySubclass = closureSubsBySubclass), todo), todo), todo), todo), todo), todo), todo), todo), todo)), todo), todo), todo), todo)
         val newState = ci match {
-          case ConceptInclusion(Nominal(ind), concept) => reasoner.ruleEngine.processConceptAssertion(ConceptAssertion(concept, ind), updatedReasoner, todo)
-          case _                                       => updatedReasoner
+          case ConceptInclusion(Nominal(left), Nominal(right)) =>
+            reasoner.ruleEngine.processRoleAssertion(RoleAssertion(BuiltIn.SameAs, left, right), updatedReasoner, todo)
+          case ConceptInclusion(Nominal(ind), concept)         => reasoner.ruleEngine.processConceptAssertion(ConceptAssertion(concept, ind), updatedReasoner, todo)
+          case _                                               => updatedReasoner
         }
         newState.queueDelegates.keysIterator.foldLeft(newState) { (state, delegateKey) =>
           state.queueDelegates(delegateKey).processConceptInclusion(ci, state)
@@ -218,10 +238,11 @@ object Reasoner {
         val closureSubsBySuperclass = reasoner.closureSubsBySuperclass.updated(superclass, subs + subclass)
         val supers = reasoner.closureSubsBySubclass.getOrElse(subclass, Set.empty)
         val closureSubsBySubclass = reasoner.closureSubsBySubclass.updated(subclass, supers + superclass)
-        val updatedReasoner = `R⊔right`(ci, `R-⟲`(ci, `R⊑right`(ci, `R+∃b-right`(ci, `R+⨅left`(ci, `R+⨅right`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass, closureSubsBySubclass = closureSubsBySubclass), todo), todo), todo), todo), todo), todo))
+        val updatedReasoner = `R≤1-c`(ci, `R≤1-a`(ci, `R∀-left`(ci, `R∃ind-left`(ci, `R⊔right`(ci, `R-⟲`(ci, `R⊑right`(ci, `R+∃b-right`(ci, `R+⨅left`(ci, `R+⨅right`(ci, `R⊥left`(ci, reasoner.copy(closureSubsBySuperclass = closureSubsBySuperclass, closureSubsBySubclass = closureSubsBySubclass), todo), todo), todo), todo), todo), todo)), todo), todo), todo), todo)
         val newState = ci match {
-          case ConceptInclusion(Nominal(ind), concept) => updatedReasoner.ruleEngine.processConceptAssertion(ConceptAssertion(concept, ind), updatedReasoner, todo)
-          case _                                       => updatedReasoner
+          case ConceptInclusion(Nominal(left), Nominal(right)) => reasoner.ruleEngine.processRoleAssertion(RoleAssertion(BuiltIn.SameAs, left, right), updatedReasoner, todo)
+          case ConceptInclusion(Nominal(ind), concept)         => updatedReasoner.ruleEngine.processConceptAssertion(ConceptAssertion(concept, ind), updatedReasoner, todo)
+          case _                                               => updatedReasoner
         }
         newState.queueDelegates.keysIterator.foldLeft(newState) { (state, delegateKey) =>
           state.queueDelegates(delegateKey).processSubPlus(ci, state)
@@ -242,7 +263,7 @@ object Reasoner {
       val updatedSubjects = subject :: subjects
       val updatedRolesToSubjects = rolesToSubjects.updated(role, updatedSubjects)
       val linksByTarget = reasoner.linksByTarget.updated(target, updatedRolesToSubjects)
-      val updatedReasoner = `R+⟲𝒪`(link, `R⤳`(link, `R∘left`(link, `R∘right`(link, `R+∃right`(link, `R⊥right`(link, reasoner.copy(linksBySubject = linksBySubject, linksByTarget = linksByTarget), todo), todo), todo), todo), todo), todo)
+      val updatedReasoner = `R≤1-b`(link, `R∀-right`(link, `R∃ind-right`(link, `R+⟲𝒪`(link, `R⤳`(link, `R∘left`(link, `R∘right`(link, `R+∃right`(link, `R⊥right`(link, reasoner.copy(linksBySubject = linksBySubject, linksByTarget = linksByTarget), todo), todo), todo), todo), todo), todo), todo), todo), todo)
       val newState = link match {
         case Link(Nominal(subjectInd), aRole, Nominal(targetInd)) => updatedReasoner.ruleEngine.processRoleAssertion(RoleAssertion(aRole, subjectInd, targetInd), updatedReasoner, todo)
         case _                                                    => updatedReasoner
@@ -254,7 +275,16 @@ object Reasoner {
   }
 
   private[this] def R0(concept: Concept, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState = {
-    todo.push(ConceptInclusion(concept, concept))
+    concept match {
+      case rt @ RoleTarget(role, target) =>
+        for {
+          range <- reasoner.roleRanges.get(role)
+        } {
+          todo.push(ConceptInclusion(rt, range))
+          todo.push(ConceptInclusion(rt, target))
+        }
+      case _                             => todo.push(ConceptInclusion(concept, concept))
+    }
     reasoner
   }
 
@@ -383,7 +413,7 @@ object Reasoner {
       // better for GO
       for {
         (right, conjunction) <- conjunctionsMatchingLeft
-        if (d2s(right))
+        if d2s(right)
       } todo.push(`Sub+`(ConceptInclusion(c, conjunction)))
     }
     reasoner
@@ -403,7 +433,7 @@ object Reasoner {
     } else {
       for {
         (left, conjunction) <- conjunctionsMatchingRight
-        if (d1s(left))
+        if d1s(left)
       } todo.push(`Sub+`(ConceptInclusion(c, conjunction)))
     }
     reasoner
@@ -411,7 +441,15 @@ object Reasoner {
 
   private[this] def `R-∃`(ci: ConceptInclusion, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState = ci match {
     case ConceptInclusion(c, ExistentialRestriction(role, filler)) =>
-      todo.push(Link(c, role, filler))
+      val target = (c, filler) match {
+        case (Nominal(_), Nominal(_)) =>
+          // ranges will be handled by rete rules
+          filler
+        case _                        =>
+          if (reasoner.roleRanges.contains(role)) RoleTarget(role, filler)
+          else filler
+      }
+      todo.push(Link(c, role, target))
       reasoner
     case _                                                         => reasoner
   }
@@ -474,8 +512,159 @@ object Reasoner {
     reasoner
   }
 
+  // Implementation of OWL RL eq-rep-o
+  private[this] def `R∃ind-left`(ci: ConceptInclusion, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState = {
+    ci match {
+      case ConceptInclusion(subclass: Nominal, superclass: Nominal) =>
+        for {
+          (r, subjects) <- reasoner.linksByTarget.getOrElse(superclass, Map.empty)
+          s <- subjects
+        } todo.push(Link(s, r, subclass))
+      case _                                                        => ()
+    }
+    reasoner
+  }
+
+  // Implementation of OWL RL eq-rep-o
+  private[this] def `R∃ind-right`(link: Link, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState = {
+    link match {
+      case Link(s: Nominal, r, o: Nominal) =>
+        for {
+          same <- reasoner.closureSubsBySuperclass.getOrElse(o, Set.empty).collect {
+            case n: Nominal => n
+          }
+        } todo.push(Link(s, r, same))
+      case _                               => ()
+    }
+    reasoner
+  }
+
+  // Implementation of OWL RL cls-avf
+  private[this] def `R∀-left`(ci: ConceptInclusion, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState = {
+    val updatedRestrictionTypesByRole = ci match {
+      case ConceptInclusion(n: Nominal, UniversalRestriction(role, filler)) =>
+        for {
+          target @ Nominal(_) <- reasoner.linksBySubject.getOrElse(n, Map.empty).getOrElse(role, Set.empty)
+        } todo.push(ConceptInclusion(target, filler))
+        reasoner.universalRestrictionTypesByRole.updatedWith(n) {
+          case Some(rolesToFillers) => Some(rolesToFillers.updatedWith(role) {
+            case Some(fillers) => Some(filler :: fillers)
+            case None          => Some(List(filler))
+          })
+          case None                 => Some(Map(role -> List(filler)))
+        }
+      case _                                                                => reasoner.universalRestrictionTypesByRole
+    }
+    reasoner.copy(universalRestrictionTypesByRole = updatedRestrictionTypesByRole)
+  }
+
+  // Implementation of OWL RL cls-avf
+  private[this] def `R∀-right`(link: Link, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState = {
+    link match {
+      case Link(s: Nominal, role, o: Nominal) =>
+        for {
+          filler <- reasoner.universalRestrictionTypesByRole.getOrElse(s, Map.empty).getOrElse(role, Nil)
+        } todo.push(ConceptInclusion(o, filler))
+      case _                                  => ()
+    }
+    reasoner
+  }
+
+  // Max 1 restrictions rules may need some optimization to reduce repeated joins
+  // x ⊑ ≤1R.C  ∧  x R y  ∧  x R z  ∧  y ⊑ C  ∧  z ⊑ C
+  // assuming all role subsumptions get materialized for individuals
+  // this rule: x ⊑ ≤1R.C
+  private[this] def `R≤1-a`(ci: ConceptInclusion, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState =
+    ci match {
+      case ConceptInclusion(subject: Nominal, MaxCardinalityRestriction(role, filler, cardinality))
+        if cardinality == 1 =>
+        val fillerSubclasses = reasoner.closureSubsBySuperclass.getOrElse(filler, Set.empty)
+        val targets = reasoner.linksBySubject.getOrElse(subject, Map.empty).getOrElse(role, Set.empty)
+          .collect {
+            case n: Nominal => n
+          }
+          .filter(fillerSubclasses)
+        if (targets.size > 1) {
+          for {
+            pair <- targets.toList.combinations(2)
+          } todo.push(ConceptInclusion(pair(0), pair(1)), ConceptInclusion(pair(1), pair(0)))
+        }
+        val updatedRestrictionTypesByRole = reasoner.maxOneCardinalityRestrictionTypesByRole.updatedWith(subject) {
+          case Some(rolesToFillers) => Some(rolesToFillers.updatedWith(role) {
+            case Some(fillers) => Some(filler :: fillers)
+            case None          => Some(List(filler))
+          })
+          case None                 => Some(Map(role -> List(filler)))
+        }
+        val updatedRestrictionTypesByFiller = reasoner.maxOneCardinalityRestrictionTypesByFiller.updatedWith(filler) {
+          case Some(rolesToInstances) => Some(rolesToInstances.updatedWith(role) {
+            case Some(instances) => Some(subject :: instances)
+            case None            => Some(List(subject))
+          })
+          case None                   => Some(Map(role -> List(subject)))
+        }
+        reasoner.copy(maxOneCardinalityRestrictionTypesByRole = updatedRestrictionTypesByRole,
+          maxOneCardinalityRestrictionTypesByFiller = updatedRestrictionTypesByFiller)
+
+      case _ => reasoner
+    }
+
+  // x ⊑ ≤1R.C  ∧  x R y  ∧  x R z  ∧  y ⊑ C  ∧  z ⊑ C
+  // this rule: x R y or x R z
+  private[this] def `R≤1-b`(link: Link, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState = {
+    link match {
+      case Link(s: Nominal, role, o: Nominal) =>
+        val fillers = reasoner.maxOneCardinalityRestrictionTypesByRole.getOrElse(s, Map.empty).getOrElse(role, Nil)
+        if (fillers.nonEmpty) {
+          val targets = reasoner.linksBySubject.getOrElse(s, Map.empty).getOrElse(role, Set.empty)
+            .collect {
+              case n: Nominal => n
+            }
+          for {
+            filler <- fillers
+            fillerSubclasses = reasoner.closureSubsBySuperclass.getOrElse(filler, Set.empty)
+            target <- targets.iterator.filter(fillerSubclasses)
+            if target != o
+          } {
+            todo.push(ConceptInclusion(o, target))
+            todo.push(ConceptInclusion(target, o))
+          }
+        }
+      case _                                  => ()
+    }
+    reasoner
+  }
+
+  // x ⊑ ≤1R.C  ∧  x R y  ∧  x R z  ∧  y ⊑ C  ∧  z ⊑ C
+  // this rule: y ⊑ C or z ⊑ C
+  private[this] def `R≤1-c`(ci: ConceptInclusion, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState = {
+    ci match {
+      case ConceptInclusion(target: Nominal, filler) =>
+        val restrictionInstancesByRole = reasoner.maxOneCardinalityRestrictionTypesByFiller.getOrElse(filler, Map.empty)
+        if (restrictionInstancesByRole.nonEmpty) {
+          for {
+            (role, subjects) <- restrictionInstancesByRole
+            subject <- subjects
+            otherTarget <- reasoner.linksBySubject.getOrElse(subject, Map.empty).getOrElse(role, Set.empty).iterator
+              .collect {
+                case n: Nominal => n
+              }
+            if otherTarget != target
+          } {
+            todo.push(ConceptInclusion(otherTarget, target))
+            todo.push(ConceptInclusion(target, otherTarget))
+          }
+        }
+      case _                                         => ()
+    }
+    reasoner
+  }
+
   private[this] def `R-⟲`(ci: ConceptInclusion, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState = ci match {
     case ConceptInclusion(sub, SelfRestriction(role)) =>
+      reasoner.roleRanges.get(role).foreach { range =>
+        todo.push(ConceptInclusion(sub, range))
+      }
       todo.push(Link(sub, role, sub))
       reasoner
     case _                                            => reasoner

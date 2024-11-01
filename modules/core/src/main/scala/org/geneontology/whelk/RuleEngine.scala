@@ -4,9 +4,16 @@ import scala.collection.mutable
 
 final case class RuleEngine(rules: Set[Rule]) {
 
+  val equalityRules = Set(
+    Rule(
+      body = List(RoleAtom(BuiltIn.SameAs, Variable("x"), Variable("y"))),
+      head = List(RoleAtom(BuiltIn.SameAs, Variable("y"), Variable("x")))
+    )
+  )
+
   val (conceptAlphaIndex: Map[Concept, ConceptAtomAlphaNode],
   roleAlphaIndex: Map[Role, RoleAtomAlphaNode],
-  allJoinSpecs: Set[JoinNodeSpec]) = constructReteNetwork(rules)
+  allJoinSpecs: Set[JoinNodeSpec]) = constructReteNetwork(rules ++ equalityRules)
 
   def emptyMemory: WorkingMemory = WorkingMemory(
     conceptAlphaIndex.keys.map(c => c -> ConceptAlphaMemory.empty).toMap,
@@ -17,11 +24,26 @@ final case class RuleEngine(rules: Set[Rule]) {
   def processConceptAssertion(assertion: ConceptAssertion, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState =
     conceptAlphaIndex.get(assertion.concept).map(node => node.activate(assertion.individual, reasoner, todo)).getOrElse(reasoner)
 
-  def processRoleAssertion(assertion: RoleAssertion, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState =
+  def processRoleAssertion(assertion: RoleAssertion, reasoner: ReasonerState, todo: mutable.Stack[QueueExpression]): ReasonerState = {
     roleAlphaIndex.get(assertion.role).map(node => node.activate(assertion, reasoner, todo)).getOrElse(reasoner)
+  }
 
   private def constructReteNetwork(rules: Set[Rule]): (Map[Concept, ConceptAtomAlphaNode], Map[Role, RoleAtomAlphaNode], Set[JoinNodeSpec]) = {
-    val nodes = rules.foldLeft(Set.empty[BetaNode]) { (nodes, rule) =>
+    // We handle sameAs and differentFrom using role atom join nodes
+    val normalized = rules.map { rule =>
+      Rule(
+        rule.body.map {
+          case SameIndividualsAtom(left, right)      => RoleAtom(BuiltIn.SameAs, left, right)
+          case DifferentIndividualsAtom(left, right) => RoleAtom(BuiltIn.DifferentFrom, left, right)
+          case other                                 => other
+        },
+        rule.head.map {
+          case SameIndividualsAtom(left, right)      => RoleAtom(BuiltIn.SameAs, left, right)
+          case DifferentIndividualsAtom(left, right) => RoleAtom(BuiltIn.DifferentFrom, left, right)
+          case other                                 => other
+        })
+    }
+    val nodes = normalized.foldLeft(Set.empty[BetaNode]) { (nodes, rule) =>
       val (_, allConceptNodes, allRoleNodes) = processRuleAtoms(rule.body, Nil, rule, Map.empty, Map.empty)
       nodes ++ allConceptNodes.values ++ allRoleNodes.values
     }
@@ -48,14 +70,20 @@ final case class RuleEngine(rules: Set[Rule]) {
         val spec = JoinNodeSpec(thisPatternSequence)
         val (child, updatedExistingC, updatedExistingR) = processRuleAtoms(rest, thisPatternSequence, rule, existingC, existingR)
         atom match {
-          case ca: ConceptAtom =>
+          case ca: ConceptAtom             =>
             val node = existingC.getOrElse(spec, ConceptAtomJoinNode(ca, Nil, spec))
             val updatedNode = node.copy(children = child :: node.children)
             (updatedNode, updatedExistingC.updated(spec, updatedNode), updatedExistingR)
-          case ra: RoleAtom    =>
+          case ra: RoleAtom                =>
             val node = existingR.getOrElse(spec, RoleAtomJoinNode(ra, Nil, spec))
             val updatedNode = node.copy(children = child :: node.children)
             (updatedNode, updatedExistingC, updatedExistingR.updated(spec, updatedNode))
+          case _: SameIndividualsAtom      =>
+            // Should never happen; SameIndividualsAtom should be internally handled as RoleAtom
+            ???
+          case _: DifferentIndividualsAtom =>
+            // Should never happen; SameIndividualsAtom should be internally handled as RoleAtom
+            ???
         }
       case Nil          => (ProductionNode(rule), existingC, existingR)
     }
