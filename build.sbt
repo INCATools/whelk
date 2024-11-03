@@ -1,6 +1,6 @@
 import scala.scalanative.build._
 
-lazy val owlapiVersion = "4.5.29"
+lazy val owlapiVersion = "5.5.1"
 
 lazy val commonSettings = Seq(
   organization := "org.geneontology",
