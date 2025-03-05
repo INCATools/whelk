@@ -8,6 +8,10 @@ Whelk is implemented as an [immutable functional data structure](https://en.wiki
 
 In addition to OWL EL classification, Whelk provides OWL RL and a subset of SWRL for reasoning on individuals.
 
+## Cite
+
+Please see our paper on Whelk in TGDK: https://doi.org/10.4230/TGDK.2.2.7 
+
 ## Use cases
 
 Whelk is based on ELK, and ELK is much faster at classifying an ontology. Some reasons to use Whelk include:
