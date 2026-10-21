@@ -16,9 +16,9 @@ lazy val publishSettings = Seq(
   Test / publishArtifact := false,
   publishMavenStyle := true,
   publishTo := {
-    val nexus = "https://oss.sonatype.org/"
-    if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
-    else Some("releases" at nexus + "service/local/staging/deploy/maven2")
+    val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
+    if (isSnapshot.value) Some("central-snapshots" at centralSnapshots)
+    else localStaging.value
   },
   pomExtra := <scm>
     <url>git@github.com:balhoff/whelk.git</url>
