@@ -1,10 +1,10 @@
 import scala.scalanative.build._
 
-lazy val owlapiVersion = "4.5.29"
+lazy val owlapiVersion = "5.5.1"
 
 lazy val commonSettings = Seq(
   organization := "org.geneontology",
-  version := "1.2.1",
+  version := "2.0.0",
   licenses := Seq("BSD-3-Clause" -> url("https://opensource.org/licenses/BSD-3-Clause")),
   homepage := Some(url("https://github.com/balhoff/whelk")),
   scalaVersion := "2.13.15",
@@ -16,9 +16,9 @@ lazy val publishSettings = Seq(
   Test / publishArtifact := false,
   publishMavenStyle := true,
   publishTo := {
-    val nexus = "https://oss.sonatype.org/"
-    if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
-    else Some("releases" at nexus + "service/local/staging/deploy/maven2")
+    val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
+    if (isSnapshot.value) Some("central-snapshots" at centralSnapshots)
+    else localStaging.value
   },
   pomExtra := <scm>
     <url>git@github.com:balhoff/whelk.git</url>
@@ -83,10 +83,10 @@ lazy val owlapi = project
     Compile / mainClass := Some("org.geneontology.whelk.Main"),
     libraryDependencies ++= Seq(
       "net.sourceforge.owlapi" % "owlapi-distribution" % owlapiVersion,
-      "org.phenoscape" %% "scowl" % "1.4.1",
-      "org.semanticweb.elk" % "elk-owlapi" % "0.4.3" % Test,
-      "net.sourceforge.owlapi" % "org.semanticweb.hermit" % "1.4.0.432" % Test,
-      "net.sourceforge.owlapi" % "jfact" % "4.0.4" % Test
+      "org.phenoscape" %% "scowl-owlapi5" % "1.4.1",
+      "io.github.liveontologies" % "elk-owlapi" % "0.6.0" % Test,
+      "net.sourceforge.owlapi" % "org.semanticweb.hermit" % "1.4.5.519" % Test,
+      "net.sourceforge.owlapi" % "jfact" % "5.0.3" % Test
     )
   )
 
@@ -120,8 +120,9 @@ lazy val protege = project
     ),
     libraryDependencies ++= Seq(
       "net.sourceforge.owlapi" % "owlapi-distribution" % owlapiVersion % Provided,
-      "edu.stanford.protege" % "protege-editor-core" % "5.5.0" % Provided,
-      "edu.stanford.protege" % "protege-editor-owl" % "5.5.0" % Provided
+      // mdock is not published to Maven Central, and the plugin doesn't use it
+      "edu.stanford.protege" % "protege-editor-core" % "6.0.0-alpha-1" % Provided exclude("com.googlecode.mdock", "mdock"),
+      "edu.stanford.protege" % "protege-editor-owl" % "6.0.0-alpha-1" % Provided exclude("com.googlecode.mdock", "mdock")
     )
   )
 
