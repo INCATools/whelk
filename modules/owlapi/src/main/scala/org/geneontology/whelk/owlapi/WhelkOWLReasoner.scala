@@ -22,9 +22,9 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
 
   private var whelk: ReasonerState = ReasonerState.empty
   private var hasPendingChanges: Boolean = true
-  private var pendingChanges: Queue[OWLOntologyChange] = Queue.empty
-  private var pendingAxiomAdditions: Set[OWLAxiom] = Set.empty
-  private var pendingAxiomRemovals: Set[OWLAxiom] = Set.empty
+  private var queuedChanges: Queue[OWLOntologyChange] = Queue.empty
+  private var queuedAxiomAdditions: Set[OWLAxiom] = Set.empty
+  private var queuedAxiomRemovals: Set[OWLAxiom] = Set.empty
 
   private object ChangeListener extends OWLOntologyChangeListener {
 
@@ -32,13 +32,13 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
     override def ontologiesChanged(changes: JList[_ <: OWLOntologyChange]): Unit = {
       hasPendingChanges = true
       for (change <- changes.asScala) {
-        pendingChanges = pendingChanges.enqueue(change)
+        queuedChanges = queuedChanges.enqueue(change)
         if (change.isAxiomChange()) {
-          pendingAxiomAdditions = pendingAxiomAdditions + change.getAxiom
+          queuedAxiomAdditions = queuedAxiomAdditions + change.getAxiom
           if (change.isAddAxiom) {
-            pendingAxiomAdditions += change.getAxiom
+            queuedAxiomAdditions += change.getAxiom
           } else if (change.isRemoveAxiom) {
-            pendingAxiomRemovals += change.getAxiom
+            queuedAxiomRemovals += change.getAxiom
           }
         }
       }
@@ -56,9 +56,9 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
 
   override def flush(): Unit = {
     whelk = Reasoner.assert(Bridge.ontologyToAxioms(ontology))
-    pendingChanges = Queue.empty
-    pendingAxiomAdditions = Set.empty
-    pendingAxiomRemovals = Set.empty
+    queuedChanges = Queue.empty
+    queuedAxiomAdditions = Set.empty
+    queuedAxiomRemovals = Set.empty
     hasPendingChanges = false
   }
 
@@ -237,11 +237,11 @@ class WhelkOWLReasoner(ontology: OWLOntology, bufferingMode: BufferingMode) exte
 
   override def getObjectPropertyRanges(ope: OWLObjectPropertyExpression, direct: Boolean): NodeSet[OWLClass] = throw new UnsupportedOperationException("getObjectPropertyRanges")
 
-  override def getPendingAxiomAdditions(): JSet[OWLAxiom] = pendingAxiomAdditions.asJava
+  override def getPendingAxiomAdditions(): JSet[OWLAxiom] = queuedAxiomAdditions.asJava
 
-  override def getPendingAxiomRemovals(): JSet[OWLAxiom] = pendingAxiomRemovals.asJava
+  override def getPendingAxiomRemovals(): JSet[OWLAxiom] = queuedAxiomRemovals.asJava
 
-  override def getPendingChanges(): JList[OWLOntologyChange] = pendingChanges.asJava
+  override def getPendingChanges(): JList[OWLOntologyChange] = queuedChanges.asJava
 
   override def getPrecomputableInferenceTypes(): JSet[InferenceType] =
     Set(InferenceType.CLASS_ASSERTIONS, InferenceType.CLASS_HIERARCHY, InferenceType.OBJECT_PROPERTY_ASSERTIONS).asJava
