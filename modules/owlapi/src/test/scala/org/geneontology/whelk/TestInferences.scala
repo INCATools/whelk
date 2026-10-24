@@ -15,6 +15,8 @@ import scala.jdk.CollectionConverters._
 
 object TestInferences extends TestSuite {
 
+  private val swrlTestNS = "http://example.org/whelk/test#"
+
   val tests = Tests {
     "Inferences should match ELK or HermiT" - {
       "uberon-tiny.ofn" - compareWhelkAndELK()
@@ -25,7 +27,14 @@ object TestInferences extends TestSuite {
       "disjunction.ofn" - compareWhelkAndELK()
       "586fc17a00001662-merged.ofn" - compareWhelkAndHermiT(false)
       "insulin_secretion.ofn" - compareWhelkAndHermiT(false)
-      "swrl-test.ofn" - compareWhelkAndHermiT(false)
+      // HermiT builds for OWL API 5 miss B(y) and D(y), so the expected assertions are listed here
+      "swrl-test.ofn" - compareWhelkAndExpected(
+        Set("A" -> "x1", "B" -> "x1", "D" -> "x1", "A" -> "z", "B" -> "y", "D" -> "y", "B" -> "z2", "D" -> "z2").map {
+          case (cls, ind) => ConceptAssertion(AtomicConcept(swrlTestNS + cls), WIndividual(swrlTestNS + ind))
+        },
+        Set(("p", "x", "z"), ("q", "x", "y"), ("q", "x2", "z2"), ("r", "x2", "y2")).map {
+          case (prop, subject, target) => RoleAssertion(Role(swrlTestNS + prop), WIndividual(swrlTestNS + subject), WIndividual(swrlTestNS + target))
+        })
       "self-restrictions.ofn" - compareWhelkAndHermiT(false)
       "unsatisfiable.ofn" - compareWhelkAndELK()
       "taxon-unions.ofn" - compareWhelkAndHermiT(false)
@@ -128,6 +137,17 @@ object TestInferences extends TestSuite {
       assert(whelkClassAssertions == hermitClassAssertions)
       assert(whelkRoleAssertions == hermitRoleAssertions)
     }
+  }
+
+  def compareWhelkAndExpected(expectedClassAssertions: Set[ConceptAssertion], expectedRoleAssertions: Set[RoleAssertion])(implicit path: utest.framework.TestPath): Unit = {
+    val fileName = path.value.last
+    val manager = OWLManager.createOWLOntologyManager()
+    val ontology = manager.loadOntologyFromOntologyDocument(this.getClass.getResourceAsStream(fileName))
+    val whelk = Reasoner.assert(Bridge.ontologyToAxioms(ontology))
+    val whelkClassAssertions = whelk.classAssertions.filterNot(_.concept == Top)
+    val whelkRoleAssertions = whelk.roleAssertions
+    assert(whelkClassAssertions == expectedClassAssertions)
+    assert(whelkRoleAssertions == expectedRoleAssertions)
   }
 
 }
